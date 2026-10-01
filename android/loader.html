@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Kharcha</title>
+<style>html,body{margin:0;background:#0f766e}</style>
+</head>
+<body>
+<script>
+// Kharcha loader. Ships inside the APK as index.html; the app itself ships as app.html.
+// On every launch it runs the newest app code downloaded from GitHub Pages (kept in
+// localStorage), or the bundled copy if there is none, then checks online for a newer one.
+// The origin never changes, so the user's saved expenses are untouched by updates.
+(function () {
+  var REMOTE = 'https://imshyamalbhatt.github.io/kharcha/index.html';
+  var CODE = 'kharcha.code', BOOT = 'kharcha.boot', BAD = 'kharcha.bad';
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function valid(h) { return typeof h === 'string' && h.indexOf('id="tab-home"') > -1 && /<\/html>\s*$/i.test(h); }
+
+  // The app sets BOOT to 'ok' once it has rendered. Still 'pending' means the
+  // downloaded version crashed last time: remember it as bad and use the bundled copy.
+  if (get(BOOT) === 'pending' && get(CODE)) { set(BAD, get(CODE)); del(CODE); }
+  var cached = get(CODE);
+
+  function run(html) {
+    set(BOOT, 'pending');
+    document.open(); document.write(html); document.close();
+  }
+  function checkForUpdate(current) {
+    fetch(REMOTE + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (h) {
+        if (!valid(h) || h === current || h === get(BAD)) return;
+        set(CODE, h);
+        if (window.kharchaUpdateReady) window.kharchaUpdateReady();
+      })
+      .catch(function () {}); // offline: keep using what we have
+  }
+
+  if (valid(cached)) { run(cached); checkForUpdate(cached); }
+  else fetch('app.html').then(function (r) { return r.text(); }).then(function (h) { run(h); checkForUpdate(h); });
+})();
+</script>
+</body>
+</html>
