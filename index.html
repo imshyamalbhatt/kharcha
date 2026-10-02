@@ -249,7 +249,10 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   </div>
   <section id="tab-home" class="tab active"></section>
   <section id="tab-history" class="tab">
-    <input id="search" class="txt" placeholder="Search heading, note, category" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <input id="search" class="txt" placeholder="Search heading, note, category" autocomplete="off" style="flex:1;min-width:0">
+      <button class="btn ghost" id="btnCsv" style="flex:none;padding:10px 14px;font-size:14px">⬇ Excel</button>
+    </div>
     <div class="chips" id="histModes"></div>
     <div id="histList"></div>
   </section>
@@ -382,7 +385,6 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
     </div>
     <div class="section-title">Your data</div>
     <div class="stack" style="margin-top:6px">
-      <button class="btn ghost" id="btnCsv">Export expenses to Excel (CSV)</button>
       <button class="btn ghost" id="btnBackup">Download backup</button>
       <button class="btn ghost" id="btnRestore">Restore from backup</button>
       <input type="file" id="fileRestore" accept=".json,application/json" hidden>
@@ -413,6 +415,7 @@ const MODES = [
 ];
 const CATS = [['Food','🍔'],['Groceries','🛒'],['Travel','🚕'],['Shopping','🛍️'],['Bills','🧾'],['Health','💊'],['Fun','🎬'],['Other','📦']];
 const OPS = '+-×÷';
+const UDHAAR = false; // udhaar is built but shown as "coming soon"; set true to roll it out
 
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -444,7 +447,7 @@ function coinSVG() {
 
 // ---------- witty lines (see the brand doc's copy bank) ----------
 const LINES = {
-  emptyAll: ['Your pocket is looking suspiciously healthy. 👀 Add your first expense.'],
+  emptyAll: ['Your pocket is looking suspiciously healthy. 👀'],
   emptyMonth: ["Nothing spent this month? Either you're a monk or you forgot to log."],
   firstSave: ['First one logged. Your pocket is officially being watched.'],
   overBudget: ['The ₹ has left the building. Over budget by {over}.', "Budget? We don't know her anymore. Over by {over}.", "Bas karo! You're {over} over budget."],
@@ -638,8 +641,12 @@ function renderHome() {
   const daysSoFar = isCur ? Number(t.slice(8)) : (viewMonth < curMonth ? daysInMonth : 0);
   let h = '';
 
-  if (!db.expenses.length) {
-    $('#tab-home').innerHTML = `<div class="card empty">${coinSVG('peek')}<b>${esc(line('emptyAll'))}</b></div>`;
+  if (!db.expenses.length) { // brand-new user: calm empty dashboard, the + button does the rest
+    $('#tab-home').innerHTML = `<div class="hero">
+        <div class="when">Today, ${new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+        <div class="line">You've spent <b>${money(0)}</b> today</div>
+        <div class="quip">${esc(line('emptyAll'))}</div></div>
+      <div class="card empty">${coinSVG()}<b>Tap + below to log your first spend.</b><br>Heading, amount, how you paid. Done in 3 seconds.<div style="font-size:26px;margin-top:6px">↓</div></div>`;
     return;
   }
 
@@ -654,7 +661,7 @@ function renderHome() {
     </div>`;
   }
 
-  const due = db.loans.filter(isDue);
+  const due = UDHAAR ? db.loans.filter(isDue) : [];
   due.slice(0, 3).forEach(l => {
     h += `<div class="banner" data-person="${esc(personKey(l.person))}" style="cursor:pointer">
       <div class="avatar">${esc(l.person.trim()[0].toUpperCase())}</div>
@@ -752,6 +759,15 @@ function loanRow(l) {
     <div class="sub" style="text-align:right">${status}</div></div>`;
 }
 function renderUdhaar() {
+  if (!UDHAAR) {
+    $('#tab-udhaar').innerHTML = `<div class="card empty" style="padding:40px 20px">
+      <div style="font-size:44px">🤝</div>
+      <span class="pill" style="background:var(--brand-yellow);color:#0E1A3A;margin:10px 0 6px">Coming soon</span>
+      <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--ink);margin-top:6px">Udhaar is on its way</div>
+      <p style="margin:8px 0 0">Track money you lend and borrow with friends, get reminders, and send a polite WhatsApp nudge. Rolling out in the next version.</p>
+      <p style="margin:12px 0 0"><b>Until then, Rahul still owes you. We know. 👀</b></p></div>`;
+    return;
+  }
   const list = people();
   const get = round2(list.reduce((s, p) => s + p.get, 0)), owe = round2(list.reduce((s, p) => s + p.owe, 0));
   let h = `<div class="tiles">
@@ -790,7 +806,7 @@ function render() {
   $('#monthBar').hidden = tab === 'udhaar';
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
   document.querySelectorAll('.nav-btn[data-go]').forEach(b => b.classList.toggle('active', b.dataset.go === tab));
-  $('#btnAdd').setAttribute('aria-label', tab === 'udhaar' ? 'Add udhaar' : 'Add expense');
+  $('#btnAdd').setAttribute('aria-label', UDHAAR && tab === 'udhaar' ? 'Add udhaar' : 'Add expense');
   if (tab === 'home') renderHome(); else if (tab === 'history') renderHistory(); else renderUdhaar();
 }
 
@@ -805,9 +821,8 @@ function closeSheets() {
   const open = document.querySelector('.sheet:not(.hidden)');
   hideSheets();
   if (open && history.state && history.state.sheet) history.back();
-  if (onbStep === 3 && !document.querySelector('.sheet:not(.hidden)')) setTimeout(() => { if (onbStep === 3) showOnb(); }, 0);
 }
-window.addEventListener('popstate', () => { hideSheets(); if (onbStep === 3) showOnb(); });
+window.addEventListener('popstate', hideSheets);
 
 function segHTML(name, options, value) {
   return options.map(([val, label]) => `<button class="${value === val ? 'on' : ''}" data-seg="${name}" data-val="${val}">${label}</button>`).join('');
@@ -843,7 +858,7 @@ function openForm(e, swap, preset) {
   $('#fNote').value = e ? e.note : '';
   $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
   $('#btnDelete').style.display = e ? '' : 'none';
-  $('#keypad').hidden = !(preset && preset.title); // onboarding goes straight to the amount
+  $('#keypad').hidden = true; // folded until the amount is tapped
   renderSuggest(); renderPickers(); updateAmount();
   if (swap) swapSheet($('#sheet')); else openSheet($('#sheet'));
 }
@@ -933,7 +948,6 @@ function saveForm() {
   if (history.state && history.state.sheet) history.back();
   viewMonth = rec.date.slice(0, 7);
   render();
-  if (onbStep === 3) { onbStep = 4; showOnb(); return; }
   const todayTotal = sum(db.expenses.filter(e => e.date === today()));
   toast(old ? 'Updated' : first ? line('firstSave') : `Saved ${money(amount)}. Today: ${money(todayTotal)}.`);
 }
@@ -1065,7 +1079,7 @@ async function syncNotifications() {
     const list = [];
     const look = { smallIcon: 'ic_stat_coin', iconColor: '#1662F0' };
     if (db.settings.nudge) list.push({ id: 1, title: 'Pocket Money', body: line('nudge'), schedule: { on: { hour: 21, minute: 0 }, allowWhileIdle: true }, ...look });
-    db.loans.filter(l => isOpen(l) && l.remindOn).forEach(l => {
+    db.loans.filter(l => UDHAAR && isOpen(l) && l.remindOn).forEach(l => {
       const at = new Date(l.remindOn + 'T10:00:00');
       if (at <= new Date()) return;
       list.push({
@@ -1168,30 +1182,25 @@ const ONB = [
   null,
   { art: () => coinSVG(), h: 'Ever wondered where your money <span class="hl">went</span>?', p: "That ₹3,000 didn't just disappear. Or did it? 👀", btn: 'Next', skip: true },
   { art: () => `<img src="assets/logo.webp" alt="" onerror="this.onerror=null;this.src='${REMOTE}assets/logo.webp'">`, h: 'Pocket Money shows you, one spend at a time.', p: 'Know where your money goes.', btn: 'Next', skip: true },
-  { art: () => coinSVG('peek'), h: 'Add your first expense.', p: 'Had a chai today? Start there. It takes 3 seconds.', btn: 'Add it', skip: false },
-  { art: () => coinSVG('peek'), h: () => `You've spent <span class="hl">${money(sum(db.expenses.filter(e => e.date === today())))}</span> today.`, p: () => line('firstSave'), btn: "Let's go", skip: false },
+  { art: () => coinSVG(), h: 'Tap <span class="hl">+</span> to log your first spend.', p: 'Had a chai today? Start there. It takes 3 seconds.', btn: "Let's go", skip: false },
 ];
 function showOnb() {
   const s = ONB[onbStep];
   if (!s) return;
-  $('#onbBody').innerHTML = `<div class="onb-art">${s.art()}</div><h1>${typeof s.h === 'function' ? s.h() : s.h}</h1><p>${esc(typeof s.p === 'function' ? s.p() : s.p)}</p>`;
-  $('#onbDots').innerHTML = [1, 2, 3, 4].map(i => `<i class="${i === onbStep ? 'on' : ''}"></i>`).join('');
+  $('#onbBody').innerHTML = `<div class="onb-art">${s.art()}</div><h1>${s.h}</h1><p>${esc(s.p)}</p>`;
+  $('#onbDots').innerHTML = [1, 2, 3].map(i => `<i class="${i === onbStep ? 'on' : ''}"></i>`).join('');
   $('#onbNext').textContent = s.btn;
   $('#onbSkip').hidden = !s.skip;
   $('#onb').hidden = false;
 }
 function endOnb() { onbStep = 0; $('#onb').hidden = true; db.onboarded = true; save(); render(); syncNotifications(); }
-$('#onbNext').onclick = () => {
-  if (onbStep < 3) { onbStep++; showOnb(); }
-  else if (onbStep === 3) { $('#onb').hidden = true; openForm(null, false, { title: 'Chai', category: 'Food' }); }
-  else endOnb();
-};
+$('#onbNext').onclick = () => { if (onbStep < 3) { onbStep++; showOnb(); } else endOnb(); }; // ends on the empty dashboard
 $('#onbSkip').onclick = endOnb;
 
 // ---------- events ----------
 $('#prevMonth').onclick = () => shiftMonth(-1);
 $('#nextMonth').onclick = () => shiftMonth(1);
-$('#btnAdd').onclick = () => tab === 'udhaar' ? openLoanForm(null) : openForm(null);
+$('#btnAdd').onclick = () => UDHAAR && tab === 'udhaar' ? openLoanForm(null) : openForm(null);
 $('#btnSave').onclick = saveForm;
 $('#btnDelete').onclick = deleteCurrent;
 $('#menuEdit').onclick = () => { const x = db.expenses.find(v => v.id === menuId); if (x) openForm(x, true); };
@@ -1290,8 +1299,30 @@ window.kharchaUpdateReady = () => {
   else toast('Update downloaded. It will apply next time you open the app.');
 };
 
+// The loader only checks for new app code at launch. Also check whenever the user comes
+// back to the app (switching from WhatsApp etc.), so an open app updates without a restart.
+// Same storage keys and checks as android/loader.html.
+let lastLiveCheck = 0;
+async function checkLiveUpdate() {
+  if (!native || Date.now() - lastLiveCheck < 60000) return;
+  lastLiveCheck = Date.now();
+  try {
+    const r = await fetch(REMOTE + 'index.html?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const h = await r.text();
+    const valid = h.indexOf('id="tab-home"') > -1 && /<\/html>\s*$/i.test(h);
+    if (!valid || h === localStorage.getItem('kharcha.code') || h === localStorage.getItem('kharcha.bad')) return;
+    localStorage.setItem('kharcha.code', h);
+    window.kharchaUpdateReady();
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { checkLiveUpdate(); checkApk(); }
+});
+
 splash(() => {
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
+  if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();
   checkApk();
