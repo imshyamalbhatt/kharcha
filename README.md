@@ -1,7 +1,7 @@
-# Kharcha
+# Pocket Money
 
-A simple personal expense tracker: log a heading, amount (with a built-in calculator), and how you paid (Cash, Card or UPI). See monthly totals, the split by payment mode and category, and your top spends.
+Know where your money goes. Log a spend in seconds (heading, amount, Cash / Card / UPI), see what you spent today and this month, and keep track of udhaar with friends, with reminders.
 
-Live: https://imshyamalbhatt.github.io/kharcha/
+Live: https://imshyamalbhatt.github.io/kharcha/ · Android app: [latest release](https://github.com/imshyamalbhatt/kharcha/releases/latest)
 
-Data stays on your device (browser storage). Use Settings → Download backup to keep a copy.
+Everything stays on your device. Use Settings → Download backup to keep a copy.

@@ -1,7 +1,8 @@
 // Offline support for the website version. Pages: network first so updates show
 // immediately, cache when offline. Other files: cache first, refreshed in the background.
-const CACHE = 'kharcha-v2';
-const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'pocket-money-v3';
+const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png',
+  './assets/logo.webp', './assets/baloo2.woff2', './assets/baloo2-ext.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));

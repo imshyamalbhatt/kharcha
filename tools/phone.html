@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocket Money Phone Preview</title>
+<style>
+/* Laptop test bench: the real app (../index.html) inside a phone-sized frame, scaled to fit the window. */
+:root{--desk:#1b2422;--panel:#24302d;--text:#e6eeeb;--muted:#9aaba5;--accent:#2dd4bf;--bezel:#0b0f0e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--desk);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:10px 16px;background:var(--panel)}
+.bar b{margin-right:6px}
+.bar select,.bar button{background:var(--desk);color:var(--text);border:1px solid #3a4844;border-radius:8px;padding:7px 12px;font:inherit;font-size:14px;cursor:pointer}
+.bar button:hover,.bar select:hover{border-color:var(--accent)}
+.bar button:focus-visible,.bar select:focus-visible{outline:2px solid var(--accent)}
+.hint{color:var(--muted);font-size:13px}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px}
+.phone{flex:none;background:var(--bezel);border-radius:46px;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.45),inset 0 0 0 2px #2a3330;transform-origin:center center;position:relative}
+.screen{position:relative;border-radius:36px;overflow:hidden;background:#fff}
+.statusbar{position:absolute;top:0;left:0;right:0;height:28px;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:12px;font-weight:600;color:#fff;pointer-events:none}
+.camera{position:absolute;top:9px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#000;z-index:3}
+iframe{display:block;border:0;width:100%;height:100%}
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>Pocket Money</b>
+  <select id="device" aria-label="Phone size">
+    <option value="412x915">Pixel 7 / most Android (412×915)</option>
+    <option value="360x800">Small Android (360×800)</option>
+    <option value="384x854">Mid Android (384×854)</option>
+    <option value="390x844">iPhone 14 (390×844)</option>
+  </select>
+  <button id="theme">Dark mode</button>
+  <button id="reload">Restart app</button>
+  <button id="reset">Reset sample data</button>
+  <button id="fresh">Fresh install</button>
+  <span class="hint">Uses your laptop copy, with sample data separate from your phone</span>
+</div>
+<div class="stage" id="stage">
+  <div class="phone" id="phone">
+    <div class="screen" id="screen">
+      <div class="statusbar"><span id="clock"></span><span>5G ▮▮▮ 82%</span></div>
+      <div class="camera"></div>
+      <iframe id="app" src="../index.html" title="Pocket Money app"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+let dark = false;
+const STATUS = 28; // px of fake status bar painted over the app's header
+
+function layout() {
+  const [w, h] = $('#device').value.split('x').map(Number);
+  $('#screen').style.width = w + 'px';
+  $('#screen').style.height = h + 'px';
+  $('#app').style.paddingTop = 0;
+  const stage = $('#stage').getBoundingClientRect();
+  const scale = Math.min(1, (stage.height - 32) / (h + 24), (stage.width - 32) / (w + 24));
+  $('#phone').style.transform = `scale(${scale})`;
+}
+function applyTheme() {
+  try {
+    const doc = $('#app').contentDocument;
+    doc.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    // push the app's header below the fake status bar, like a real phone
+    let st = doc.getElementById('bench-style');
+    if (!st) { st = doc.createElement('style'); st.id = 'bench-style'; doc.head.appendChild(st); }
+    st.textContent = `.top{padding-top:${STATUS + 10}px !important}.onb{padding-top:${STATUS + 16}px !important}`;
+  } catch (e) {}
+  $('#theme').textContent = dark ? 'Light mode' : 'Dark mode';
+}
+function tick() { $('#clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
+
+$('#device').onchange = layout;
+$('#theme').onclick = () => { dark = !dark; applyTheme(); };
+// "Restart app" clears the session so the splash plays again, like reopening the app
+const restart = (src) => { try { $('#app').contentWindow.sessionStorage.clear(); } catch (e) {} $('#app').src = src || '../index.html'; };
+$('#reload').onclick = () => restart($('#app').contentWindow.location.href);
+$('#reset').onclick = () => { try { $('#app').contentWindow.localStorage.removeItem('kharcha.v1'); } catch (e) {} restart('../index.html'); };
+$('#fresh').onclick = () => { try { $('#app').contentWindow.localStorage.removeItem('kharcha.v1'); } catch (e) {} restart('../index.html?fresh=1'); };
+$('#app').addEventListener('load', applyTheme);
+window.addEventListener('resize', layout);
+tick(); setInterval(tick, 30000); layout();
+// ?app=<query> opens the app with that query, e.g. phone.html?app=fresh=1 (used for screenshots)
+const q = new URLSearchParams(location.search).get('app');
+if (q) $('#app').src = '../index.html?' + q;
+</script>
+</body>
+</html>
