@@ -2,7 +2,9 @@
 
 Personal money app for Shyamal (formerly "Kharcha"): log expenses (heading, amount with a fold-away calculator keypad, Cash / Card / UPI, category), monthly dashboard with a "Today" hero card, budget, udhaar (money lent / borrowed with reminders), CSV export, backup. Indian context: amounts in ₹, `en-IN` formatting.
 
-Brand reference (colours, fonts, voice, copy bank, logo set): the Claude doc "Pocket Money: Brand & Version 2 Plan", https://claude.ai/code/artifact/f68dcef3-5d1d-4326-bab2-f48aa7119b02. Short version: Pocket Blue `#1662F0`, Deep Blue `#0B3FB8`, Money Yellow `#FFC93C`; Baloo 2 for display text, system font for UI; voice is youthful, slightly witty, never judgmental (Zomato-style), Hinglish welcome. The ₹ coin appears as a still image only: **no running/animated coin** (Shyamal rejected it).
+Brand (since v2.1, after user feedback "a finance app should be green, font should be professional"): emerald green `--pm #0A8F5C`, deep `#065F3E`, logo green `#0BA368`, soft tint `#E6F4EE`, gold accent `#FFD166` / `#F2B630`, coral `#E5484D` for over-budget and "you owe". Font: **Inter** everywhere (assets/inter*.woff2), tabular numbers for amounts. Icons: **Lucide** line icons, embedded as the `ICONS` map in index.html (add new ones from the `lucide-static` npm package); no emoji as icons. The logo is `design/logo-source-green.png` (the blue original was recoloured). Voice is youthful, slightly witty, never judgmental (Zomato-style), Hinglish welcome. No running/animated coin. The older brand doc (blue, Baloo 2) is superseded for colours and fonts: https://claude.ai/code/artifact/f68dcef3-5d1d-4326-bab2-f48aa7119b02
+
+Dashboard is deliberately minimal (testers said it showed too much): Today card, Budget card (always shown, with days left and a safe per-day amount, or a "Set a monthly budget" button), due Udhaar reminders, Where it went (top 4 categories), Recent (4). The Cash/Card/UPI split lives on the History filter chips. Don't add blocks back to the dashboard without asking.
 
 ## How it ships
 
@@ -20,6 +22,8 @@ Brand reference (colours, fonts, voice, copy bank, logo set): the Claude doc "Po
 - No `alert` / `confirm` / `prompt`: use the in-app `ask()` dialog.
 - Native features go through `Capacitor.Plugins` and must be guarded by the `native` flag, because the same file runs in a normal browser too.
 - After changing cached files, bump `CACHE` in `sw.js`.
+- Every release: bump `pm-version` / `pm-notes` meta tags in index.html (the "new version" pop-up shows them).
+- Udhaar is behind `const UDHAAR = true`; set false to show "coming soon" instead.
 
 ## Test before pushing
 

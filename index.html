@@ -3,163 +3,191 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1662F0">
+<meta name="theme-color" content="#0A8F5C">
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
+<!-- Bump on every release: shown in the "new version" pop-up -->
+<meta name="pm-version" content="2.1">
+<meta name="pm-notes" content="Fresh green look, budget always on your dashboard, and Udhaar is live.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-/* Brand reference: "Pocket Money: Brand & Version 2 Plan" doc. Pocket Blue + Money Yellow, Baloo 2 for display, system font for UI. */
-@font-face{font-family:'Baloo 2';src:url(assets/baloo2.woff2) format('woff2');font-weight:500 800;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F,U+2122,U+2212}
-@font-face{font-family:'Baloo 2';src:url(assets/baloo2-ext.woff2) format('woff2');font-weight:500 800;font-display:swap;unicode-range:U+0100-024F,U+20A0-20C0}
+/* Pocket Money 2.1: emerald green (matches the logo), Inter, Lucide line icons. Calm and professional. */
+@font-face{font-family:'Inter';src:url(assets/inter.woff2) format('woff2'),url(https://imshyamalbhatt.github.io/kharcha/assets/inter.woff2) format('woff2');font-weight:400 800;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F,U+2122,U+2212}
+@font-face{font-family:'Inter';src:url(assets/inter-ext.woff2) format('woff2'),url(https://imshyamalbhatt.github.io/kharcha/assets/inter-ext.woff2) format('woff2');font-weight:400 800;font-display:swap;unicode-range:U+0100-024F,U+20A0-20C0}
 :root{
-  --blue:#1662F0;--blue-deep:#0B3FB8;--yellow:#FFC93C;--gold:#C98A00;
-  --ink:#0E1A3A;--muted:#5B6785;--bg:#F5F7FC;--card:#FFFFFF;--line:#E3E8F4;--chip:#EEF2FB;
-  --green:#16A34A;--coral:#EF4444;--warn:#F59E0B;--cash:#16A34A;--cardc:#1662F0;--upi:#7C3AED;
-  --hdr1:#1662F0;--hdr2:#0B3FB8;--brand-yellow:#FFC93C;
-  --display:'Baloo 2',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --pm:#0A8F5C;--pm-deep:#065F3E;--pm-bright:#0BA368;--pm-soft:#E6F4EE;--gold:#F2B630;
+  --ink:#0F1F18;--muted:#5C6B64;--bg:#F4F7F5;--card:#FFFFFF;--line:#E2E9E5;--chip:#EEF3F0;
+  --green:#0A8F5C;--coral:#E5484D;--warn:#D98A00;--cash:#0A8F5C;--cardc:#2563EB;--upi:#7C3AED;
+  --hdr1:#0BA368;--hdr2:#065F3E;--brand-yellow:#FFD166;
+  --display:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --ui:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--blue:#4C8DFF;--blue-deep:#2F6FE8;--yellow:#FFD45C;--gold:#E0A82E;--ink:#E8EDFA;--muted:#98A3C0;--bg:#0B1020;--card:#141B30;--line:#232C47;--chip:#1B2440;--green:#34D399;--coral:#F87171;--cash:#34D399;--cardc:#4C8DFF;--upi:#A78BFA;color-scheme:dark}}
-:root[data-theme="dark"]{--blue:#4C8DFF;--blue-deep:#2F6FE8;--yellow:#FFD45C;--gold:#E0A82E;--ink:#E8EDFA;--muted:#98A3C0;--bg:#0B1020;--card:#141B30;--line:#232C47;--chip:#1B2440;--green:#34D399;--coral:#F87171;--cash:#34D399;--cardc:#4C8DFF;--upi:#A78BFA;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pm:#2CC98A;--pm-deep:#1FA372;--pm-bright:#34D399;--pm-soft:#11322A;--gold:#F5C451;--ink:#E6F0EB;--muted:#93A69D;--bg:#0B1411;--card:#121E1A;--line:#1F2E28;--chip:#18261F;--green:#2CC98A;--coral:#F26D71;--cash:#2CC98A;--cardc:#60A5FA;--upi:#A78BFA;color-scheme:dark}}
+:root[data-theme="dark"]{--pm:#2CC98A;--pm-deep:#1FA372;--pm-bright:#34D399;--pm-soft:#11322A;--gold:#F5C451;--ink:#E6F0EB;--muted:#93A69D;--bg:#0B1411;--card:#121E1A;--line:#1F2E28;--chip:#18261F;--green:#2CC98A;--coral:#F26D71;--cash:#2CC98A;--cardc:#60A5FA;--upi:#A78BFA;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui)}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 button{font-family:inherit;cursor:pointer;color:inherit}
-button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--pm);outline-offset:2px}
+.num,.big,.tile-amt,.amt-sm,.menu-amt,#exprView,.hero .amt{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+svg.i{width:20px;height:20px;flex:none;vertical-align:middle}
 
 /* header */
 .top{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--hdr1),var(--hdr2));color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 12px}
 .top-row{display:flex;align-items:center;gap:10px;max-width:640px;margin:0 auto}
-.top-logo{width:34px;height:34px;border-radius:10px;flex:none}
-.wordmark{font-family:var(--display);font-weight:800;font-size:23px;line-height:1;letter-spacing:.2px}
+.top-logo{width:32px;height:32px;border-radius:9px;flex:none}
+.wordmark{font-family:var(--display);font-weight:700;font-size:20px;line-height:1;letter-spacing:-.01em}
 .wordmark span{color:var(--brand-yellow)}
 .month{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px}
 .month[hidden]{display:none}
-.month button{background:rgba(255,255,255,.18);border:0;color:#fff;width:34px;height:34px;border-radius:50%;font-size:18px}
-.month span{min-width:150px;text-align:center;font-weight:700}
+.month button{background:rgba(255,255,255,.16);border:0;color:#fff;width:32px;height:32px;border-radius:50%;display:grid;place-items:center}
+.month button svg.i{width:18px;height:18px}
+.month span{min-width:150px;text-align:center;font-weight:600;font-size:15px}
 
 main{padding:14px 16px;max-width:640px;margin:0 auto}
 .tab{display:none}.tab.active{display:block}
 .card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .label{font-size:13px;color:var(--muted);font-weight:600}
-.big{font-family:var(--display);font-size:34px;font-weight:800;line-height:1.1;margin:4px 0 2px}
+.big{font-family:var(--display);font-size:30px;font-weight:700;line-height:1.15;margin:4px 0 2px}
 .sub{font-size:13px;color:var(--muted)}
 .over{color:var(--coral)!important;font-weight:600}
 .banner{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px}
 .banner[hidden]{display:none}
 .banner .grow{flex:1;min-width:0}
-.banner.info{border-color:var(--blue)}
+.banner.info{border-color:var(--pm)}
+.link-btn{background:none;border:0;color:var(--pm);font-weight:600;font-size:14px;padding:6px 0;display:inline-flex;align-items:center;gap:4px}
 
 /* hero: today */
-.hero{background:linear-gradient(135deg,var(--hdr1),var(--hdr2));color:#fff;border-radius:20px;padding:18px;margin-bottom:12px;box-shadow:0 10px 24px rgba(11,63,184,.25)}
-.hero .when{font-size:13px;opacity:.85;font-weight:600}
-.hero .line{font-family:var(--display);font-size:22px;font-weight:700;line-height:1.25;margin-top:4px}
-.hero .line b{display:block;font-size:40px;font-weight:800;color:var(--brand-yellow);line-height:1.05}
-.hero .quip{font-size:14px;margin-top:8px;opacity:.92}
-.hero .rows{margin-top:12px;border-top:1px solid rgba(255,255,255,.2)}
-.hero .row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:14px;cursor:pointer}
-.hero .row:last-child{border-bottom:0}
-.hero .row span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero{background:linear-gradient(135deg,var(--hdr1),var(--hdr2));color:#fff;border-radius:18px;padding:16px 18px;margin-bottom:12px}
+.hero .when{font-size:13px;opacity:.85;font-weight:500}
+.hero .amt{font-family:var(--display);font-size:36px;font-weight:700;line-height:1.1;margin-top:6px;color:#fff}
+.hero .amt small{font-size:15px;font-weight:500;opacity:.85;margin-left:6px;letter-spacing:0}
+.hero .quip{font-size:13.5px;margin-top:8px;opacity:.9;line-height:1.45}
 
-.progress{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:12px 0 6px}
+/* budget */
+.progress{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:12px 0 10px}
 .progress>div{height:100%;border-radius:6px}
-.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
-.modes .card{margin:0;padding:12px}
-.amt-sm{font-family:var(--display);font-weight:800;font-size:18px;margin:4px 0 0;word-break:break-all}
-.bar-row{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:10px;align-items:center;margin:10px 0;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.stats div{min-width:0}
+.stats b{display:block;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats span{font-size:12px;color:var(--muted)}
+.tip{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted);background:var(--pm-soft);border-radius:10px;padding:8px 10px}
+.tip svg.i{width:16px;height:16px;color:var(--pm)}
+
+.amt-sm{font-family:var(--display);font-weight:700;font-size:17px;margin:4px 0 0;word-break:break-all}
+.bar-row{display:grid;grid-template-columns:32px minmax(70px,32%) 1fr auto;gap:10px;align-items:center;margin:10px 0;font-size:14px}
+.bar-row .ico{width:32px;height:32px;border-radius:9px}
+.bar-row .ico svg.i{width:17px;height:17px}
 .bar-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar{height:8px;background:var(--line);border-radius:5px;overflow:hidden}
-.bar>div{height:100%;background:var(--blue);border-radius:5px}
+.bar-row b{font-weight:600;font-variant-numeric:tabular-nums}
+.bar{height:6px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar>div{height:100%;background:var(--pm);border-radius:5px}
 .item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .item:last-child{border-bottom:0}
-.ico{width:40px;height:40px;border-radius:12px;background:var(--chip);display:grid;place-items:center;font-size:20px;flex:none}
+.ico{width:40px;height:40px;border-radius:12px;background:var(--pm-soft);color:var(--pm);display:grid;place-items:center;flex:none}
 .mid{flex:1;min-width:0}
 .item .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .m{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item .a{font-weight:700;white-space:nowrap}
-.day-head{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:16px 4px 6px;font-weight:700}
+.item .a{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.day-head{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:16px 4px 6px;font-weight:600}
 .empty{text-align:center;color:var(--muted);padding:28px 16px;line-height:1.6}
-.empty .coin{width:64px;height:60px;margin:0 auto 8px;display:block}
 .empty b{color:var(--ink)}
+.empty-ico{width:56px;height:56px;border-radius:50%;background:var(--pm-soft);color:var(--pm);display:grid;place-items:center;margin:0 auto 10px}
+.empty-ico svg.i{width:26px;height:26px}
+.mode-ic{width:14px;height:14px;vertical-align:-2px}
 
 /* udhaar */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .tiles .card{margin:0}
-.tile-amt{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin-top:4px}
+.tile-amt{font-family:var(--display);font-weight:700;font-size:24px;line-height:1.15;margin-top:4px}
 .get{color:var(--green)}.owe{color:var(--coral)}
 .person{padding:0;overflow:hidden}
 .person-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
-.avatar{width:40px;height:40px;border-radius:50%;background:var(--chip);color:var(--blue);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:18px;flex:none}
-.person-head .net{text-align:right;font-weight:700;white-space:nowrap}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--pm-soft);color:var(--pm);display:grid;place-items:center;font-weight:700;font-size:16px;flex:none}
+.person-head .net{text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .person-head .net small{display:block;font-size:11px;font-weight:600;color:var(--muted)}
 .person-body{border-top:1px solid var(--line);padding:4px 16px 12px}
 .loan{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .loan:last-of-type{border-bottom:0}
-.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted);margin-left:6px;vertical-align:1px}
+.dir{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none}
+.dir svg.i{width:16px;height:16px}
+.dir.gave{background:var(--pm-soft);color:var(--green)}
+.dir.took{background:rgba(229,72,77,.12);color:var(--coral)}
+.pill{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted);margin-left:6px;vertical-align:1px}
+.pill svg.i{width:11px;height:11px}
 .pill.due{background:var(--coral);color:#fff}
-.link-btn{background:none;border:0;color:var(--blue);font-weight:700;font-size:14px;padding:8px 0}
-details.settled summary{cursor:pointer;color:var(--muted);font-weight:700;font-size:13px;padding:6px 4px;list-style:none}
+details.settled summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px;padding:6px 4px;list-style:none}
 details.settled summary::-webkit-details-marker{display:none}
 
 /* bottom nav */
 nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding:6px 0 calc(8px + env(safe-area-inset-bottom));z-index:6}
-.nav-btn{background:none;border:0;color:var(--muted);font-size:11.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;width:72px}
-.nav-btn.active{color:var(--blue)}
-.nav-btn .i{font-size:20px}
-.fab{width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,var(--hdr1),var(--hdr2));color:#fff;border:3px solid var(--card);font-size:34px;line-height:1;margin-top:-30px;box-shadow:0 8px 18px rgba(11,63,184,.4);flex:none}
+.nav-btn{background:none;border:0;color:var(--muted);font-size:11.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;width:72px}
+.nav-btn.active{color:var(--pm)}
+.nav-btn svg.i{width:22px;height:22px}
+.fab{width:58px;height:58px;border-radius:50%;background:var(--pm);color:#fff;border:4px solid var(--card);display:grid;place-items:center;margin-top:-28px;box-shadow:0 6px 16px rgba(6,95,62,.35);flex:none}
+.fab svg.i{width:26px;height:26px;stroke-width:2.5}
 
 /* sheets */
 .sheet{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
 .sheet.hidden{display:none}
 .sheet.center{align-items:center;padding:24px}
-.backdrop{position:absolute;inset:0;background:rgba(5,12,35,.5)}
+.backdrop{position:absolute;inset:0;background:rgba(6,20,14,.5)}
 .panel{position:relative;background:var(--card);width:100%;max-width:640px;max-height:94vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:up .18s ease-out}
 .sheet.center .panel{border-radius:20px;max-width:390px;padding:20px}
 @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
-.panel-head h2{margin:0;font-family:var(--display);font-size:21px;font-weight:800}
-.close{background:var(--chip);border:0;width:34px;height:34px;border-radius:50%;font-size:16px;flex:none}
+.panel-head h2{margin:0;font-family:var(--display);font-size:19px;font-weight:700}
+.close{background:var(--chip);border:0;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none}
+.close svg.i{width:18px;height:18px}
 .txt{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:16px;font-family:inherit}
-.txt:focus{outline:2px solid var(--blue);border-color:transparent}
+.txt:focus{outline:2px solid var(--pm);border-color:transparent}
+.search-wrap{position:relative;flex:1;min-width:0}
+.search-wrap svg.i{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted)}
+.search-wrap .txt{padding-left:38px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .chips.scroll::-webkit-scrollbar{display:none}
-.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:7px 12px;border-radius:999px;font-size:14px;white-space:nowrap}
-.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:999px;font-size:14px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.chip svg.i{width:16px;height:16px}
+.chip small{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.chip.on{background:var(--pm);border-color:var(--pm);color:#fff}
+.chip.on small{color:rgba(255,255,255,.85)}
 .amount-box{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:10px 14px;text-align:right;margin:10px 0 8px;cursor:pointer}
-.amount-box.active{border-color:var(--blue)}
-#exprView{font-family:var(--display);font-size:32px;font-weight:800;word-break:break-all;line-height:1.2}
+.amount-box.active{border-color:var(--pm)}
+#exprView{font-family:var(--display);font-size:30px;font-weight:700;word-break:break-all;line-height:1.2}
 #resultView{font-size:15px;color:var(--muted);min-height:20px;font-weight:600}
 .amount-box.prompt{text-align:left;border-style:dashed}
-.amount-box.prompt #exprView{font-size:20px;color:var(--blue)}
+.amount-box.prompt #exprView{font-size:18px;font-weight:600;color:var(--pm);letter-spacing:0}
 .amount-box.prompt #resultView{font-weight:500;font-size:13px}
 .keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;animation:up .15s ease-out}
 .keypad[hidden]{display:none}
-.keypad button{height:50px;border-radius:12px;border:0;background:var(--chip);font-size:21px;font-weight:600;user-select:none}
+.keypad button{height:50px;border-radius:12px;border:0;background:var(--chip);font-size:20px;font-weight:500;user-select:none}
 .keypad button:active{filter:brightness(.92)}
-.keypad .op{color:var(--blue);font-size:24px}
-.keypad .eq{background:var(--blue);color:#fff;grid-column:span 2}
-.section-title{font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+.keypad .op{color:var(--pm);font-size:22px}
+.keypad .eq{background:var(--pm);color:#fff;grid-column:span 2}
+.section-title{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.06em}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:6px 0}
-.seg button{padding:12px 6px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:15px;font-weight:700}
-.seg button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.seg button{padding:11px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button svg.i{width:18px;height:18px}
+.seg button.on{background:var(--pm);color:#fff;border-color:var(--pm)}
 .seg.give button.on[data-val="took"]{background:var(--coral);border-color:var(--coral)}
-.seg.give button.on[data-val="gave"]{background:var(--green);border-color:var(--green)}
 .row2{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
 .actions{display:flex;gap:10px;margin-top:16px}
 .stack{display:grid;gap:10px;margin-top:14px}
-.btn{flex:1;padding:14px;border-radius:14px;border:0;font-size:16px;font-weight:700}
-.btn.primary{background:var(--blue);color:#fff}
-.btn.good{background:var(--green);color:#fff}
+.btn{flex:1;padding:13px;border-radius:13px;border:0;font-size:15.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn svg.i{width:18px;height:18px}
+.btn.primary{background:var(--pm);color:#fff}
+.btn.good{background:var(--pm);color:#fff}
 .btn.danger{background:transparent;color:var(--coral);border:1px solid var(--coral)}
 .btn.danger-fill{background:var(--coral);color:#fff}
-.btn.ghost{background:var(--bg);border:1px solid var(--line)}
+.btn.ghost{background:var(--card);border:1px solid var(--line)}
 .btn.wa{background:#25D366;color:#fff}
 .menu-head{display:flex;gap:12px;align-items:center}
-.menu-title{font-weight:700;font-size:17px;overflow-wrap:anywhere}
-.menu-amt{font-family:var(--display);font-weight:800;font-size:22px;white-space:nowrap}
+.menu-title{font-weight:600;font-size:17px;overflow-wrap:anywhere}
+.menu-amt{font-family:var(--display);font-weight:700;font-size:21px;white-space:nowrap}
 .note-box{margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:13px;color:var(--muted)}
 .note-box[hidden]{display:none}
 .switch-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0}
@@ -167,50 +195,49 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .switch input{opacity:0;width:0;height:0;position:absolute}
 .switch span{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:.2s}
 .switch span::after{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-.switch input:checked+span{background:var(--blue)}
+.switch input:checked+span{background:var(--pm)}
 .switch input:checked+span::after{transform:translateX(20px)}
 
 .ask{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px}
+#upd{z-index:70}
 .ask[hidden]{display:none}
 .ask-box{position:relative;background:var(--card);border-radius:18px;padding:20px;max-width:360px;width:100%}
 .ask-box p{margin:0 0 4px;font-size:16px;line-height:1.45}
-#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#0E1A3A;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:45;max-width:calc(100% - 32px);text-align:center}
+#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#0F1F18;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:45;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1}
 #toast.show.actionable{pointer-events:auto}
-#toast button{background:none;border:0;color:var(--brand-yellow);font-weight:800;font-size:14px;margin-left:10px;padding:4px}
-.demo-bar{background:var(--card);border:1px dashed var(--blue);color:var(--muted);font-size:13px;border-radius:12px;padding:10px 12px;margin-bottom:12px}
+#toast button{background:none;border:0;color:var(--brand-yellow);font-weight:700;font-size:14px;margin-left:10px;padding:4px}
+.demo-bar{background:var(--card);border:1px dashed var(--pm);color:var(--muted);font-size:13px;border-radius:12px;padding:10px 12px;margin-bottom:12px}
 .demo-bar[hidden]{display:none}
 
-/* the ₹ coin (still image, used on empty screens) */
-.coin{overflow:visible}
-
 /* splash */
-.splash{position:fixed;inset:0;z-index:60;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;transition:opacity .35s}
+.splash{position:fixed;inset:0;z-index:60;background:radial-gradient(circle at 50% 38%,#14B877 0,#0A8F5C 40%,#054A31 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;transition:opacity .35s}
 .splash.out{opacity:0}
 .splash[hidden]{display:none}
-.splash-logo{width:150px;height:150px;border-radius:34px;animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
-.splash .wordmark{font-size:38px;margin-top:18px;color:#0E1A3A;animation:rise .4s .2s both}
-.splash .wordmark span{color:#F2A900}
-.splash .tag{font-size:15px;color:#5B6785;margin-top:6px;animation:rise .4s .35s both}
+.splash-logo{width:140px;height:140px;border-radius:32px;box-shadow:0 18px 40px rgba(2,30,18,.45),0 0 0 4px rgba(255,255,255,.16);animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
+.splash .wordmark{font-size:32px;font-weight:700;margin-top:22px;color:#fff;animation:rise .4s .2s both}
+.splash .wordmark span{color:var(--brand-yellow)}
+.splash .tag{font-size:15px;color:rgba(255,255,255,.85);margin-top:8px;animation:rise .4s .35s both}
 @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @keyframes rise{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 
 /* onboarding */
 .onb{position:fixed;inset:0;z-index:55;background:var(--card);display:flex;flex-direction:column;padding:calc(20px + env(safe-area-inset-top)) 24px calc(20px + env(safe-area-inset-bottom))}
 .onb[hidden]{display:none}
-.onb-skip{align-self:flex-end;background:none;border:0;color:var(--muted);font-weight:700;font-size:15px;padding:6px}
+.onb-skip{align-self:flex-end;background:none;border:0;color:var(--muted);font-weight:600;font-size:15px;padding:6px}
 .onb-skip[hidden]{visibility:hidden;display:block}
 .onb-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;max-width:420px;margin:0 auto}
-.onb-body h1{font-family:var(--display);font-size:32px;font-weight:800;line-height:1.15;margin:0;text-wrap:balance}
+.onb-body h1{font-family:var(--display);font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin:0;text-wrap:balance}
 .onb-body p{color:var(--muted);font-size:16px;line-height:1.5;margin:0;text-wrap:balance}
-.onb-body .hl{color:var(--blue)}
-.onb-art{height:170px;display:grid;place-items:center}
-.onb-art img{width:140px;height:140px;border-radius:32px}
-.onb-art .coin{width:110px;height:122px}
+.onb-body .hl{color:var(--pm)}
+.onb-art{height:160px;display:grid;place-items:center}
+.onb-art img{width:130px;height:130px;border-radius:30px}
+.onb-art .empty-ico{width:120px;height:120px}
+.onb-art .empty-ico svg.i{width:54px;height:54px}
 .onb-foot{display:flex;align-items:center;gap:14px;max-width:420px;width:100%;margin:0 auto}
 .dots{display:flex;gap:6px}
 .dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
-.dots i.on{background:var(--blue);width:22px;border-radius:5px}
+.dots i.on{background:var(--pm);width:22px;border-radius:5px}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 </style>
@@ -235,9 +262,9 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
     <div class="wordmark">Pocket <span>Money</span></div>
   </div>
   <div class="month" id="monthBar">
-    <button id="prevMonth" aria-label="Previous month">‹</button>
+    <button id="prevMonth" aria-label="Previous month" data-ic="left"></button>
     <span id="monthLabel"></span>
-    <button id="nextMonth" aria-label="Next month">›</button>
+    <button id="nextMonth" aria-label="Next month" data-ic="right"></button>
   </div>
 </header>
 
@@ -250,28 +277,28 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   <section id="tab-home" class="tab active"></section>
   <section id="tab-history" class="tab">
     <div style="display:flex;gap:8px">
-      <input id="search" class="txt" placeholder="Search heading, note, category" autocomplete="off" style="flex:1;min-width:0">
-      <button class="btn ghost" id="btnCsv" style="flex:none;padding:10px 14px;font-size:14px">⬇ Excel</button>
+      <div class="search-wrap"><span data-ic="search"></span><input id="search" class="txt" placeholder="Search heading, note, category" autocomplete="off"></div>
+      <button class="btn ghost" id="btnCsv" style="flex:none;padding:10px 14px;font-size:14px"><span data-ic="download"></span>Excel</button>
     </div>
-    <div class="chips" id="histModes"></div>
+    <div class="chips scroll" id="histModes"></div>
     <div id="histList"></div>
   </section>
   <section id="tab-udhaar" class="tab"></section>
 </main>
 
 <nav class="bottom">
-  <button class="nav-btn active" data-go="home"><span class="i">🏠</span>Home</button>
-  <button class="nav-btn" data-go="history"><span class="i">📋</span>History</button>
-  <button class="fab" id="btnAdd" aria-label="Add">+</button>
-  <button class="nav-btn" data-go="udhaar"><span class="i">🤝</span>Udhaar</button>
-  <button class="nav-btn" id="btnSettings"><span class="i">⚙️</span>Settings</button>
+  <button class="nav-btn active" data-go="home"><span data-ic="home"></span>Home</button>
+  <button class="nav-btn" data-go="history"><span data-ic="history"></span>History</button>
+  <button class="fab" id="btnAdd" aria-label="Add" data-ic="plus"></button>
+  <button class="nav-btn" data-go="udhaar"><span data-ic="udhaar"></span>Udhaar</button>
+  <button class="nav-btn" id="btnSettings"><span data-ic="settings"></span>Settings</button>
 </nav>
 
 <!-- Add / edit expense -->
 <div id="sheet" class="sheet hidden">
   <div class="backdrop" data-close></div>
   <div class="panel">
-    <div class="panel-head"><h2 id="sheetTitle">Add expense</h2><button class="close" data-close aria-label="Close">✕</button></div>
+    <div class="panel-head"><h2 id="sheetTitle">Add expense</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <input id="fTitle" class="txt" placeholder="Heading, e.g. Lunch, Petrol, Recharge" autocomplete="off" maxlength="60">
     <div id="suggest" class="chips scroll"></div>
     <div class="amount-box" id="amountBox" role="button" tabindex="0" aria-label="Amount, tap to enter">
@@ -310,8 +337,8 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
     </div>
     <div class="note-box" id="menuNote"></div>
     <div class="actions">
-      <button class="btn danger" id="menuDelete">Delete</button>
-      <button class="btn primary" id="menuEdit">Edit</button>
+      <button class="btn danger" id="menuDelete"><span data-ic="trash"></span>Delete</button>
+      <button class="btn primary" id="menuEdit"><span data-ic="edit"></span>Edit</button>
     </div>
     <button class="btn ghost" data-close style="width:100%;margin-top:10px">Cancel</button>
   </div>
@@ -321,13 +348,13 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 <div id="loanSheet" class="sheet hidden">
   <div class="backdrop" data-close></div>
   <div class="panel">
-    <div class="panel-head"><h2 id="loanTitle">Add udhaar</h2><button class="close" data-close aria-label="Close">✕</button></div>
+    <div class="panel-head"><h2 id="loanTitle">Add udhaar</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <div class="seg give" id="lType"></div>
     <div class="section-title">Friend</div>
     <input id="lPerson" class="txt" placeholder="Name, e.g. Rahul" autocomplete="off" maxlength="40">
     <div id="lPeople" class="chips scroll"></div>
     <div class="section-title">Amount</div>
-    <input id="lAmount" class="txt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="₹ amount" style="font-family:var(--display);font-size:24px;font-weight:800">
+    <input id="lAmount" class="txt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="₹ amount" style="font-size:22px;font-weight:700">
     <div class="section-title">Paid via</div>
     <div class="seg" id="lMode"></div>
     <div class="section-title">Remind me</div>
@@ -359,9 +386,9 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 <div id="payDlg" class="sheet center hidden">
   <div class="backdrop" data-close></div>
   <div class="panel">
-    <div class="panel-head"><h2 id="payTitle">Money back</h2><button class="close" data-close aria-label="Close">✕</button></div>
+    <div class="panel-head"><h2 id="payTitle">Money back</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <div class="sub" id="payLeft"></div>
-    <input id="payAmount" class="txt" type="number" inputmode="decimal" min="0" step="0.01" style="margin-top:10px;font-family:var(--display);font-size:24px;font-weight:800">
+    <input id="payAmount" class="txt" type="number" inputmode="decimal" min="0" step="0.01" style="margin-top:10px;font-size:22px;font-weight:700">
     <div class="chips"><button class="chip" id="payFull"></button></div>
     <div class="seg" id="pMode"></div>
     <div class="actions"><button class="btn good" id="paySave">Save</button></div>
@@ -372,7 +399,7 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 <div id="settings" class="sheet hidden">
   <div class="backdrop" data-close></div>
   <div class="panel">
-    <div class="panel-head"><h2>Settings</h2><button class="close" data-close aria-label="Close">✕</button></div>
+    <div class="panel-head"><h2>Settings</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <div class="section-title">Monthly budget (₹)</div>
     <div class="row2" style="grid-template-columns:1fr auto">
       <input id="budget" class="txt" type="number" inputmode="decimal" min="0" placeholder="e.g. 20000 (0 = off)">
@@ -403,19 +430,33 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   </div>
 </div>
 
+<!-- "New version" pop-up: new app code (Update now) or a new APK (Download) -->
+<div id="upd" class="ask" hidden>
+  <div class="backdrop"></div>
+  <div class="ask-box" style="text-align:center">
+    <img src="assets/logo.webp" alt="" style="width:64px;height:64px;border-radius:16px" onerror="this.onerror=null;this.src='https://imshyamalbhatt.github.io/kharcha/assets/logo.webp'">
+    <div id="updTitle" style="font-size:20px;font-weight:700;margin-top:10px">New version ready ✨</div>
+    <p id="updNotes" class="sub" style="font-size:14px;margin:6px 0 0"></p>
+    <div class="actions"><button class="btn ghost" id="updLater">Later</button><button class="btn primary" id="updGo">Update now</button></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
+// Lucide icons (ISC licence, lucide.dev), inner SVG markup only
+const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />"};
+const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const KEY = 'kharcha.v1'; // storage key kept from the first version so existing data survives
 const REMOTE = 'https://imshyamalbhatt.github.io/kharcha/';
 const MODES = [
-  { id: 'Cash', icon: '💵', color: 'var(--cash)' },
-  { id: 'Card', icon: '💳', color: 'var(--cardc)' },
-  { id: 'UPI',  icon: '📱', color: 'var(--upi)' },
+  { id: 'Cash', ic: 'cash' },
+  { id: 'Card', ic: 'card' },
+  { id: 'UPI',  ic: 'upi' },
 ];
-const CATS = [['Food','🍔'],['Groceries','🛒'],['Travel','🚕'],['Shopping','🛍️'],['Bills','🧾'],['Health','💊'],['Fun','🎬'],['Other','📦']];
+const CATS = [['Food','food'],['Groceries','groceries'],['Travel','travel'],['Shopping','shopping'],['Bills','bills'],['Health','health'],['Fun','fun'],['Other','other']];
 const OPS = '+-×÷';
-const UDHAAR = false; // udhaar is built but shown as "coming soon"; set true to roll it out
+const UDHAAR = true; // set false to show Udhaar as "coming soon" again
 
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -428,8 +469,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const round2 = v => Math.round(v * 100) / 100;
 const sum = list => round2(list.reduce((s, e) => s + e.amount, 0));
 const byNewest = (a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt;
-const catIcon = c => (CATS.find(x => x[0] === c) || CATS[CATS.length - 1])[1];
-const modeIcon = m => (MODES.find(x => x.id === m) || {}).icon || '';
+const catIcon = c => icon((CATS.find(x => x[0] === c) || CATS[CATS.length - 1])[1]);
+const modeIcon = m => icon((MODES.find(x => x.id === m) || {}).ic, 'mode-ic');
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const shortDate = d => { const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); };
 
@@ -437,13 +478,8 @@ const demo = window.self !== window.top || /[?&]demo=1/.test(location.search); /
 const fresh = /[?&]fresh=1/.test(location.search);  // preview of a brand-new install
 const native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 
-// ---------- the ₹ coin (still image) ----------
-function coinSVG() {
-  return `<svg class="coin" viewBox="0 0 64 60" aria-hidden="true">
-    <circle cx="32" cy="30" r="25" fill="#F2A900"/><circle cx="32" cy="28" r="23" fill="#FFC93C"/>
-    <circle cx="32" cy="28" r="17.5" fill="none" stroke="#F2A900" stroke-width="2.5"/>
-    <text x="32" y="37" text-anchor="middle" font-family="'Baloo 2',Arial,sans-serif" font-weight="800" font-size="25" fill="#B97700">₹</text></svg>`;
-}
+// Empty states: one line icon in a soft green circle
+const emptyIcon = n => `<div class="empty-ico">${icon(n)}</div>`;
 
 // ---------- witty lines (see the brand doc's copy bank) ----------
 const LINES = {
@@ -483,7 +519,7 @@ function load() {
 function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
 
 if (demo && !fresh && !db.demoSeeded && !db.expenses.length) {
-  db.expenses = sampleData(); db.loans = sampleLoans(); db.demoSeeded = true; db.onboarded = true; save();
+  db.expenses = sampleData(); db.loans = sampleLoans(); db.budget = 20000; db.demoSeeded = true; db.onboarded = true; save();
 }
 function sampleData() {
   const rows = [
@@ -639,98 +675,83 @@ function renderHome() {
   const [y, m] = viewMonth.split('-').map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
   const daysSoFar = isCur ? Number(t.slice(8)) : (viewMonth < curMonth ? daysInMonth : 0);
+  const daysLeft = isCur ? daysInMonth - Number(t.slice(8)) + 1 : 0;
+  const monthName = new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long' });
   let h = '';
 
-  if (!db.expenses.length) { // brand-new user: calm empty dashboard, the + button does the rest
-    $('#tab-home').innerHTML = `<div class="hero">
-        <div class="when">Today, ${new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
-        <div class="line">You've spent <b>${money(0)}</b> today</div>
-        <div class="quip">${esc(line('emptyAll'))}</div></div>
-      <div class="card empty">${coinSVG()}<b>Tap + below to log your first spend.</b><br>Heading, amount, how you paid. Done in 3 seconds.<div style="font-size:26px;margin-top:6px">↓</div></div>`;
-    return;
-  }
-
+  // 1. Today (current month only)
   if (isCur) {
-    const todays = db.expenses.filter(e => e.date === t).sort(byNewest);
-    const tt = sum(todays);
+    const tt = sum(db.expenses.filter(e => e.date === t));
     h += `<div class="hero">
-      <div class="when">Today, ${new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
-      <div class="line">You've spent <b>${money(tt)}</b> today</div>
-      <div class="quip">${esc(quip(items))}</div>
-      ${todays.length ? `<div class="rows">${todays.slice(0, 3).map(e => `<div class="row" data-id="${e.id}"><span>${catIcon(e.category)} ${esc(e.title)}</span><b>${money(e.amount)}</b></div>`).join('')}</div>` : ''}
+      <div class="when">Today · ${new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+      <div class="amt">${money(tt)}<small>spent today</small></div>
+      <div class="quip">${esc(db.expenses.length ? quip(items) : line('emptyAll'))}</div>
     </div>`;
   }
 
-  const due = UDHAAR ? db.loans.filter(isDue) : [];
-  due.slice(0, 3).forEach(l => {
-    h += `<div class="banner" data-person="${esc(personKey(l.person))}" style="cursor:pointer">
-      <div class="avatar">${esc(l.person.trim()[0].toUpperCase())}</div>
-      <div class="grow">${l.type === 'gave' ? `<b>Collect ${money(leftOf(l))} from ${esc(l.person)}</b>` : `<b>You owe ${esc(l.person)} ${money(leftOf(l))}</b>`}<div class="sub">Udhaar reminder</div></div>
-      ${l.type === 'gave' ? `<button class="btn wa" data-wa="${l.id}" style="flex:none;padding:9px 12px;font-size:14px">WhatsApp</button>` : ''}
-    </div>`;
-  });
-
-  h += `<div class="card"><div class="label">Spent in ${monthLabel(viewMonth)}</div>
-    <div class="big">${money(total)}</div>
-    <div class="sub">${items.length} transaction${items.length === 1 ? '' : 's'}${daysSoFar ? ` · ${money(round2(total / daysSoFar))}/day avg` : ''}</div>`;
+  // 2. Budget: always shown, with days left in the month
+  h += `<div class="card"><div class="card-head"><span class="label">${monthName} budget</span>
+    <button class="link-btn" data-budget>${db.budget > 0 ? 'Edit' : ''}</button></div>`;
   if (db.budget > 0) {
-    const pct = Math.min(100, total / db.budget * 100);
-    const left = round2(db.budget - total);
-    const color = left < 0 ? 'var(--coral)' : pct >= 80 ? 'var(--warn)' : 'var(--blue)';
-    h += `<div class="progress"><div style="width:${pct}%;background:${color}"></div></div>`;
-    h += left < 0
-      ? `<div class="sub over">Over budget by ${money(-left)}</div>`
-      : `<div class="sub">${money(left)} left of ${money(db.budget)} budget</div>`;
+    const left = round2(db.budget - total), pct = Math.min(100, total / db.budget * 100);
+    const color = left < 0 ? 'var(--coral)' : pct >= 80 ? 'var(--warn)' : 'var(--pm)';
+    h += `<div class="big ${left < 0 ? 'over' : ''}">${left < 0 ? `${money(-left)} over` : `${money(left)} left`}</div>
+      <div class="progress"><div style="width:${pct}%;background:${color}"></div></div>
+      <div class="stats"><div><b>${money(total)}</b><span>Spent</span></div><div><b>${money(db.budget)}</b><span>Budget</span></div>
+        <div><b>${isCur ? daysLeft : 0}</b><span>${isCur ? `day${daysLeft === 1 ? '' : 's'} left` : 'Month over'}</span></div></div>`;
+    if (isCur && left > 0) h += `<div class="tip">${icon('wallet')}<span>You can spend about <b>${money(Math.floor(left / daysLeft))}</b> a day till ${daysInMonth} ${monthName.slice(0, 3)}.</span></div>`;
+    if (isCur && left <= 0) h += `<div class="tip" style="background:rgba(229,72,77,.1)">${icon('bell')}<span>${esc(line('overBudget', { over: money(-left) }))}</span></div>`;
+  } else {
+    h += `<div class="big">${money(total)}</div>
+      <div class="sub">spent so far${isCur ? ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left in ${monthName}` : ''}</div>
+      <button class="btn ghost" data-budget style="width:100%;margin-top:12px">${icon('wallet')}Set a monthly budget</button>`;
   }
   h += '</div>';
 
+  // 3. Udhaar reminders that are due today
+  if (UDHAAR) db.loans.filter(isDue).slice(0, 2).forEach(l => {
+    h += `<div class="banner" data-person="${esc(personKey(l.person))}" style="cursor:pointer">
+      <div class="dir ${l.type}">${icon(l.type)}</div>
+      <div class="grow">${l.type === 'gave' ? `<b>Collect ${money(leftOf(l))} from ${esc(l.person)}</b>` : `<b>Pay ${esc(l.person)} ${money(leftOf(l))}</b>`}<div class="sub">Udhaar reminder</div></div>
+      ${l.type === 'gave' ? `<button class="btn wa" data-wa="${l.id}" style="flex:none;padding:9px 12px;font-size:14px">${icon('chat')}Remind</button>` : ''}
+    </div>`;
+  });
+
+  if (!db.expenses.length) {
+    $('#tab-home').innerHTML = h + `<div class="card empty">${emptyIcon('plus')}<b>Tap + below to log your first spend.</b><br>Heading, amount, how you paid. Done in 3 seconds.</div>`;
+    return;
+  }
   if (!items.length) {
-    $('#tab-home').innerHTML = h + `<div class="card empty">${coinSVG('peek')}<b>${esc(line('emptyMonth'))}</b></div>`;
+    $('#tab-home').innerHTML = h + `<div class="card empty">${emptyIcon('calendar')}<b>${esc(line('emptyMonth'))}</b></div>`;
     return;
   }
 
-  h += '<div class="modes">' + MODES.map(md => {
-    const s = sum(items.filter(e => e.mode === md.id));
-    return `<div class="card" style="border-top:3px solid ${md.color}">
-      <div class="label">${md.icon} ${md.id}</div><div class="amt-sm">${money(s)}</div>
-      <div class="sub">${total ? Math.round(s / total * 100) : 0}%</div></div>`;
-  }).join('') + '</div>';
+  // 4. Where it went: top 4 categories
+  const cats = CATS.map(([c, ic]) => ({ c, ic, s: sum(items.filter(e => e.category === c)) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+  const max = cats[0].s;
+  h += `<div class="card"><div class="card-head"><span class="label">Where it went</span><button class="link-btn" data-go="history">History ${icon('right')}</button></div>` +
+    cats.slice(0, 4).map(x => `<div class="bar-row"><div class="ico">${icon(x.ic)}</div><span>${x.c}</span><div class="bar"><div style="width:${x.s / max * 100}%"></div></div><b>${money(x.s)}</b></div>`).join('') + '</div>';
 
-  const cats = CATS.map(([c, i]) => ({ label: `${i} ${c}`, s: sum(items.filter(e => e.category === c)) }))
-    .filter(x => x.s > 0).sort((a, b) => b.s - a.s);
-  h += barCard('By category', cats);
-
-  const byTitle = {};
-  items.forEach(e => {
-    const k = e.title.trim().toLowerCase();
-    (byTitle[k] = byTitle[k] || { label: e.title.trim(), s: 0, n: 0 }).s += e.amount;
-    byTitle[k].n++;
-  });
-  const top = Object.values(byTitle).sort((a, b) => b.s - a.s).slice(0, 5)
-    .map(x => ({ label: `${esc(x.label)}${x.n > 1 ? ` ×${x.n}` : ''}`, s: round2(x.s) }));
-  h += barCard('Top headings', top);
-
-  h += `<div class="card"><div class="label">Recent</div>${items.slice(0, 5).map(e => itemHTML(e, true)).join('')}
-    <button class="btn ghost" style="width:100%;margin-top:8px" data-go="history">See all</button></div>`;
+  // 5. Recent
+  h += `<div class="card"><div class="card-head"><span class="label">Recent</span><button class="link-btn" data-go="history">See all ${icon('right')}</button></div>
+    ${items.slice(0, 4).map(e => itemHTML(e, true)).join('')}</div>`;
   $('#tab-home').innerHTML = h;
-}
-function barCard(title, rows) {
-  const max = rows.length ? rows[0].s : 1;
-  return `<div class="card"><div class="label">${title}</div>` + rows.map(x =>
-    `<div class="bar-row"><span>${x.label}</span><div class="bar"><div style="width:${x.s / max * 100}%"></div></div><b>${money(x.s)}</b></div>`
-  ).join('') + '</div>';
 }
 
 // ---------- history ----------
 function renderHistory() {
-  $('#histModes').innerHTML = ['All', ...MODES.map(m => m.id)].map(m =>
-    `<button class="chip ${histMode === m ? 'on' : ''}" data-hmode="${m}">${m === 'All' ? 'All' : modeIcon(m) + ' ' + m}</button>`).join('');
+  const month = monthItems();
+  // payment-mode filters double as the Cash / Card / UPI split for the month
+  $('#histModes').innerHTML = ['All', ...MODES.map(m => m.id)].map(m => {
+    const s = sum(m === 'All' ? month : month.filter(e => e.mode === m));
+    return `<button class="chip ${histMode === m ? 'on' : ''}" data-hmode="${m}">${m === 'All' ? 'All' : modeIcon(m) + m} <small>${money(s)}</small></button>`;
+  }).join('');
   const q = $('#search').value.trim().toLowerCase();
-  const items = monthItems().filter(e =>
+  const items = month.filter(e =>
     (histMode === 'All' || e.mode === histMode) &&
     (!q || `${e.title} ${e.note} ${e.category}`.toLowerCase().includes(q)));
   if (!items.length) {
-    $('#histList').innerHTML = `<div class="card empty">${coinSVG('peek')}Nothing found for ${monthLabel(viewMonth)}.</div>`;
+    $('#histList').innerHTML = `<div class="card empty">${emptyIcon('search')}Nothing found for ${monthLabel(viewMonth)}.</div>`;
     return;
   }
   const groups = [];
@@ -752,8 +773,9 @@ function loanRow(l) {
   if (l.writtenOff) status = `Written off ${money(left)}`;
   else if (!isOpen(l)) status = 'Settled';
   else status = p ? `${money(p)} back · <b>${money(left)} left</b>` : `<b>${money(left)} pending</b>`;
-  const rem = isOpen(l) && l.remindOn ? `<span class="pill ${isDue(l) ? 'due' : ''}">🔔 ${isDue(l) ? 'Due' : shortDate(l.remindOn)}</span>` : '';
+  const rem = isOpen(l) && l.remindOn ? `<span class="pill ${isDue(l) ? 'due' : ''}">${icon('bell')}${isDue(l) ? 'Due' : shortDate(l.remindOn)}</span>` : '';
   return `<div class="loan" data-loan="${l.id}">
+    <div class="dir ${l.type}">${icon(l.type)}</div>
     <div class="mid"><div style="font-weight:600">${verb} ${money(l.amount)}${rem}</div>
     <div class="sub">${shortDate(l.date)} · ${modeIcon(l.mode)} ${l.mode}${l.note ? ' · ' + esc(l.note) : ''}</div></div>
     <div class="sub" style="text-align:right">${status}</div></div>`;
@@ -761,9 +783,9 @@ function loanRow(l) {
 function renderUdhaar() {
   if (!UDHAAR) {
     $('#tab-udhaar').innerHTML = `<div class="card empty" style="padding:40px 20px">
-      <div style="font-size:44px">🤝</div>
-      <span class="pill" style="background:var(--brand-yellow);color:#0E1A3A;margin:10px 0 6px">Coming soon</span>
-      <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--ink);margin-top:6px">Udhaar is on its way</div>
+      ${emptyIcon('udhaar')}
+      <span class="pill" style="background:var(--brand-yellow);color:#0F1F18;margin:4px 0 6px">Coming soon</span>
+      <div style="font-size:22px;font-weight:700;color:var(--ink);margin-top:6px">Udhaar is on its way</div>
       <p style="margin:8px 0 0">Track money you lend and borrow with friends, get reminders, and send a polite WhatsApp nudge. Rolling out in the next version.</p>
       <p style="margin:12px 0 0"><b>Until then, Rahul still owes you. We know. 👀</b></p></div>`;
     return;
@@ -774,11 +796,11 @@ function renderUdhaar() {
     <div class="card"><div class="label">You'll get back</div><div class="tile-amt get">${money(get)}</div></div>
     <div class="card"><div class="label">You owe</div><div class="tile-amt owe">${money(owe)}</div></div></div>`;
   if (!db.loans.length) {
-    $('#tab-udhaar').innerHTML = h + `<div class="card empty">${coinSVG('peek')}<b>${esc(line('udhaarEmpty'))}</b><br>Lent or borrowed money? Tap <b>+</b> to note it.</div>`;
+    $('#tab-udhaar').innerHTML = h + `<div class="card empty">${emptyIcon('udhaar')}<b>${esc(line('udhaarEmpty'))}</b><br>Lent or borrowed money? Tap <b>+</b> to note it.</div>`;
     return;
   }
   const open = list.filter(p => p.open.length).sort((a, b) => (b.due - a.due) || (Math.max(b.get, b.owe) - Math.max(a.get, a.owe)));
-  if (!open.length) h += `<div class="card empty">${coinSVG('peek')}<b>${esc(line('allSettled'))}</b></div>`;
+  if (!open.length) h += `<div class="card empty">${emptyIcon('check')}<b>${esc(line('allSettled'))}</b></div>`;
   open.forEach(p => {
     const net = round2(p.get - p.owe);
     const expanded = openPerson === p.key;
@@ -790,7 +812,7 @@ function renderUdhaar() {
         <div class="net ${net >= 0 ? 'get' : 'owe'}">${money(Math.abs(net))}<small>${net >= 0 ? 'you get' : 'you owe'}</small></div>
       </div>
       ${expanded ? `<div class="person-body">${p.open.sort(byNewest).map(loanRow).join('')}
-        <button class="link-btn" data-addfor="${esc(p.name)}">+ Add for ${esc(p.name)}</button></div>` : ''}
+        <button class="link-btn" data-addfor="${esc(p.name)}">${icon('plus')}Add for ${esc(p.name)}</button></div>` : ''}
     </div>`;
   });
   const closed = db.loans.filter(l => !isOpen(l)).sort(byNewest);
@@ -827,16 +849,16 @@ window.addEventListener('popstate', hideSheets);
 function segHTML(name, options, value) {
   return options.map(([val, label]) => `<button class="${value === val ? 'on' : ''}" data-seg="${name}" data-val="${val}">${label}</button>`).join('');
 }
-const modeOptions = MODES.map(m => [m.id, `${m.icon} ${m.id}`]);
+const modeOptions = MODES.map(m => [m.id, `${icon(m.ic)}${m.id}`]);
 
 // ---------- expense pop-up + form ----------
 let menuId = null;
 function openMenu(e) {
   menuId = e.id;
-  $('#menuIco').textContent = catIcon(e.category);
+  $('#menuIco').innerHTML = catIcon(e.category);
   $('#menuTitle').textContent = e.title;
   $('#menuAmt').textContent = money(e.amount);
-  $('#menuMeta').textContent = [dayLabel(e.date), `${modeIcon(e.mode)} ${e.mode}`, e.category].join(' · ');
+  $('#menuMeta').innerHTML = [dayLabel(e.date), `${modeIcon(e.mode)} ${e.mode}`, e.category].join(' · ');
   $('#menuNote').textContent = e.note || '';
   $('#menuNote').hidden = !e.note;
   openSheet($('#itemMenu'));
@@ -864,7 +886,7 @@ function openForm(e, swap, preset) {
 }
 function renderPickers() {
   $('#fMode').innerHTML = segHTML('fMode', modeOptions, form.mode);
-  $('#fCat').innerHTML = CATS.map(([c, i]) => `<button class="chip ${form.category === c ? 'on' : ''}" data-cat="${c}">${i} ${c}</button>`).join('');
+  $('#fCat').innerHTML = CATS.map(([c, ic]) => `<button class="chip ${form.category === c ? 'on' : ''}" data-cat="${c}">${icon(ic)}${c}</button>`).join('');
 }
 // Recent headings, most used first, so repeat spends are one tap
 function renderSuggest() {
@@ -973,7 +995,7 @@ function openLoanForm(l, swap, presetPerson) {
   if (swap) swapSheet($('#loanSheet')); else openSheet($('#loanSheet'));
 }
 function renderLoanForm() {
-  $('#lType').innerHTML = segHTML('lType', [['gave', '↗ I gave'], ['took', '↙ I took']], lf.type);
+  $('#lType').innerHTML = segHTML('lType', [['gave', icon('gave') + 'I gave'], ['took', icon('took') + 'I took']], lf.type);
   $('#lMode').innerHTML = segHTML('lMode', modeOptions, lf.mode);
   $('#lRemind').innerHTML = REMIND.map(([v, t]) => `<button class="chip ${lf.remind === v ? 'on' : ''}" data-remind="${v}">${t}</button>`).join('');
   $('#lRemindDate').hidden = lf.remind !== 'pick';
@@ -1009,15 +1031,15 @@ function openLoanMenu(l) {
   const left = leftOf(l);
   $('#lmAvatar').textContent = l.person.trim()[0].toUpperCase();
   $('#lmTitle').textContent = l.type === 'gave' ? `You gave ${l.person} ${money(l.amount)}` : `You took ${money(l.amount)} from ${l.person}`;
-  $('#lmMeta').textContent = [shortDate(l.date), `${modeIcon(l.mode)} ${l.mode}`, l.note].filter(Boolean).join(' · ');
+  $('#lmMeta').innerHTML = [shortDate(l.date), `${modeIcon(l.mode)} ${l.mode}`, esc(l.note)].filter(Boolean).join(' · ');
   const hist = l.payments.map(p => `${shortDate(p.date)}: ${money(p.amount)} ${l.type === 'gave' ? 'back' : 'paid'}`);
   const state = l.writtenOff ? `Written off: ${money(left)}` : isOpen(l) ? `${money(left)} ${l.type === 'gave' ? 'still to get' : 'still to pay'}` : 'Settled';
-  $('#lmHistory').innerHTML = [...hist.map(esc), `<b>${state}</b>`, isOpen(l) && l.remindOn ? `🔔 Reminder ${shortDate(l.remindOn)}` : ''].filter(Boolean).join('<br>');
+  $('#lmHistory').innerHTML = [...hist.map(esc), `<b>${state}</b>`, isOpen(l) && l.remindOn ? `${icon('bell', 'mode-ic')} Reminder ${shortDate(l.remindOn)}` : ''].filter(Boolean).join('<br>');
   const b = [];
   if (isOpen(l)) {
-    b.push(`<button class="btn good" data-lact="pay">${l.type === 'gave' ? 'Got money back' : 'I paid it back'}</button>`);
-    if (l.type === 'gave') b.push(`<button class="btn wa" data-lact="wa">Remind on WhatsApp</button>`);
-    b.push(`<div class="actions" style="margin:0"><button class="btn ghost" data-lact="edit">Edit</button>${l.type === 'gave' ? '<button class="btn ghost" data-lact="writeoff">Write off</button>' : ''}<button class="btn danger" data-lact="delete">Delete</button></div>`);
+    b.push(`<button class="btn good" data-lact="pay">${icon('check')}${l.type === 'gave' ? 'Got money back' : 'I paid it back'}</button>`);
+    if (l.type === 'gave') b.push(`<button class="btn wa" data-lact="wa">${icon('chat')}Remind on WhatsApp</button>`);
+    b.push(`<div class="actions" style="margin:0"><button class="btn ghost" data-lact="edit">${icon('edit')}Edit</button>${l.type === 'gave' ? '<button class="btn ghost" data-lact="writeoff">Write off</button>' : ''}<button class="btn danger" data-lact="delete">${icon('trash')}</button></div>`);
   } else b.push(`<button class="btn danger" data-lact="delete">Delete</button>`);
   $('#lmActions').innerHTML = b.join('');
   openSheet($('#loanMenu'));
@@ -1077,7 +1099,7 @@ async function syncNotifications() {
     const pending = await ln.getPending();
     if (pending.notifications.length) await ln.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
     const list = [];
-    const look = { smallIcon: 'ic_stat_coin', iconColor: '#1662F0' };
+    const look = { smallIcon: 'ic_stat_coin', iconColor: '#0A8F5C' };
     if (db.settings.nudge) list.push({ id: 1, title: 'Pocket Money', body: line('nudge'), schedule: { on: { hour: 21, minute: 0 }, allowWhileIdle: true }, ...look });
     db.loans.filter(l => UDHAAR && isOpen(l) && l.remindOn).forEach(l => {
       const at = new Date(l.remindOn + 'T10:00:00');
@@ -1104,6 +1126,13 @@ async function checkApk() {
       apkUrl = v.url;
       $('#apkNotes').textContent = v.notes || 'Tap Download, then Install.';
       $('#apkBar').hidden = false;
+      let asked = false; // pop-up once per app session; the banner stays on screen after that
+      try { asked = sessionStorage.getItem('pm.apkAsked') === '1'; sessionStorage.setItem('pm.apkAsked', '1'); } catch (e) {}
+      if (!asked) offerUpdate({
+        title: `Pocket Money ${v.versionName || ''} is here`.trim(),
+        notes: `${v.notes || ''} Tap Download, then Install. Your data stays.`.trim(),
+        goLabel: 'Download', go: () => openExternal(apkUrl),
+      });
     }
   } catch (e) {}
 }
@@ -1180,9 +1209,9 @@ function splash(done) {
 let onbStep = 0;
 const ONB = [
   null,
-  { art: () => coinSVG(), h: 'Ever wondered where your money <span class="hl">went</span>?', p: "That ₹3,000 didn't just disappear. Or did it? 👀", btn: 'Next', skip: true },
+  { art: () => emptyIcon('wallet'), h: 'Ever wondered where your money <span class="hl">went</span>?', p: "That ₹3,000 didn't just disappear. Or did it? 👀", btn: 'Next', skip: true },
   { art: () => `<img src="assets/logo.webp" alt="" onerror="this.onerror=null;this.src='${REMOTE}assets/logo.webp'">`, h: 'Pocket Money shows you, one spend at a time.', p: 'Know where your money goes.', btn: 'Next', skip: true },
-  { art: () => coinSVG(), h: 'Tap <span class="hl">+</span> to log your first spend.', p: 'Had a chai today? Start there. It takes 3 seconds.', btn: "Let's go", skip: false },
+  { art: () => emptyIcon('plus'), h: 'Tap <span class="hl">+</span> to log your first spend.', p: 'Had a chai today? Start there. It takes 3 seconds.', btn: "Let's go", skip: false },
 ];
 function showOnb() {
   const s = ONB[onbStep];
@@ -1224,7 +1253,7 @@ $('#amountBox').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.p
 ['#fTitle', '#fNote', '#fDate'].forEach(s => $(s).addEventListener('focus', () => { if (keypadOpen()) closeKeypad(); }));
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-sugg],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor]');
+  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-sugg],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget]');
   if (!el) return;
   const d = el.dataset;
   if ('close' in d) closeSheets();
@@ -1248,6 +1277,7 @@ document.addEventListener('click', e => {
   else if (d.remind !== undefined) { lf.remind = d.remind; renderLoanForm(); }
   else if (d.pname) { $('#lPerson').value = d.pname; renderLoanForm(); }
   else if (d.addfor) openLoanForm(null, false, d.addfor);
+  else if ('budget' in d) { $('#btnSettings').click(); setTimeout(() => $('#budget').focus(), 200); }
   else if (d.sugg) {
     const v = renderSuggest.map[d.sugg];
     $('#fTitle').value = v.title;
@@ -1289,15 +1319,47 @@ $('#btnWipe').onclick = async () => {
 };
 
 $('#demoBar').hidden = !demo;
+document.querySelectorAll('[data-ic]').forEach(el => { el.innerHTML = icon(el.dataset.ic); }); // static Lucide icons
 render();
 
 // Phone app: tell the loader (android/loader.html) this version started fine, and
 // switch to a newly downloaded version right away unless the user is mid-entry.
 try { localStorage.setItem('kharcha.boot', 'ok'); } catch (e) {}
+
+// ---------- "new version" pop-ups ----------
+const metaOf = (html, name) => ((new RegExp(`name="${name}" content="([^"]*)"`)).exec(html || '') || [])[1] || '';
+const thisVersion = metaOf(document.documentElement.outerHTML, 'pm-version');
+let splashDone = false;
+const updQueue = [];
+function offerUpdate(u) { updQueue.push(u); flushUpdates(); }
+function flushUpdates() {
+  if (!splashDone || !$('#upd').hidden || !updQueue.length) return;
+  const u = updQueue.shift();
+  $('#updTitle').textContent = u.title;
+  $('#updNotes').textContent = u.notes;
+  $('#updGo').textContent = u.goLabel;
+  $('#upd').hidden = false;
+  const close = () => { $('#upd').hidden = true; setTimeout(flushUpdates, 250); };
+  $('#updGo').onclick = () => { close(); u.go(); };
+  $('#updLater').onclick = () => { close(); if (u.later) u.later(); };
+}
+// Called by the loader (and checkLiveUpdate) once newer app code has been downloaded.
 window.kharchaUpdateReady = () => {
-  if (!document.querySelector('.sheet:not(.hidden)') && $('#ask').hidden && $('#onb').hidden && $('#splash').hidden) location.reload();
-  else toast('Update downloaded. It will apply next time you open the app.');
+  let html = '';
+  try { html = localStorage.getItem('kharcha.code') || ''; } catch (e) {}
+  const v = metaOf(html, 'pm-version'), notes = metaOf(html, 'pm-notes');
+  offerUpdate({
+    title: v ? `Version ${v} is ready ✨` : 'New version ready ✨',
+    notes: notes || 'Fresh improvements are waiting for you.',
+    goLabel: 'Update now', go: () => location.reload(),
+    later: () => toast("No problem. It'll apply next time you open the app."),
+  });
 };
+// After an update: one friendly line saying what's new
+if (thisVersion && db.seenVersion && db.seenVersion !== thisVersion) {
+  setTimeout(() => toast(`Updated to v${thisVersion} 🎉 ${metaOf(document.documentElement.outerHTML, 'pm-notes')}`), 2300);
+}
+if (thisVersion && db.seenVersion !== thisVersion) { db.seenVersion = thisVersion; save(); }
 
 // The loader only checks for new app code at launch. Also check whenever the user comes
 // back to the app (switching from WhatsApp etc.), so an open app updates without a restart.
@@ -1321,7 +1383,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 splash(() => {
+  splashDone = true; flushUpdates();
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
+  if (/[?&]demoupdate=1/.test(location.search)) offerUpdate({ title: `Version ${thisVersion} is ready ✨`, notes: metaOf(document.documentElement.outerHTML, 'pm-notes'), goLabel: 'Update now', go: () => location.reload(), later: () => toast("No problem. It'll apply next time you open the app.") });
+  if (/[?&]demoapk=1/.test(location.search)) offerUpdate({ title: 'Pocket Money 2.1 is here', notes: 'Colourful launch screen. Tap Download, then Install. Your data stays.', goLabel: 'Download', go: () => toast('On the phone this downloads the APK') });
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();
