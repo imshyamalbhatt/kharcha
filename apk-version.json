@@ -1,6 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "2.2",
+  "versionCode": 3,
+  "versionName": "2.1",
   "url": "https://github.com/imshyamalbhatt/kharcha/releases/latest/download/PocketMoney.apk",
-  "notes": "Spends from your bank SMS get picked up automatically, udhaar reminders go to your friend's WhatsApp, and future updates install inside the app."
+  "notes": "Paused: 2.2 could not be installed on Shyamal's phone (see CLAUDE.md)."
 }
