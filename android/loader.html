@@ -9,10 +9,10 @@
 </head>
 <body>
 <script>
-// Kharcha loader. Ships inside the APK as index.html; the app itself ships as app.html.
-// On every launch it runs the newest app code downloaded from GitHub Pages (kept in
-// localStorage), or the bundled copy if there is none, then checks online for a newer one.
-// The origin never changes, so the user's saved expenses are untouched by updates.
+// Pocket Money loader. Ships inside the APK as index.html; the app itself ships as app.html.
+// At launch it fetches the live app code from GitHub Pages (waiting at most 1.5 s) so small
+// updates apply silently, and falls back to the last downloaded copy (localStorage) or the
+// copy bundled in the APK when offline. The origin never changes, so saved data is untouched.
 (function () {
   var REMOTE = 'https://imshyamalbhatt.github.io/kharcha/index.html';
   var CODE = 'kharcha.code', BOOT = 'kharcha.boot', BAD = 'kharcha.bad';
@@ -24,25 +24,27 @@
   // The app sets BOOT to 'ok' once it has rendered. Still 'pending' means the
   // downloaded version crashed last time: remember it as bad and use the bundled copy.
   if (get(BOOT) === 'pending' && get(CODE)) { set(BAD, get(CODE)); del(CODE); }
-  var cached = get(CODE);
 
   function run(html) {
     set(BOOT, 'pending');
     document.open(); document.write(html); document.close();
   }
-  function checkForUpdate(current) {
-    fetch(REMOTE + '?t=' + Date.now(), { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.text() : null; })
-      .then(function (h) {
-        if (!valid(h) || h === current || h === get(BAD)) return;
-        set(CODE, h);
-        if (window.kharchaUpdateReady) window.kharchaUpdateReady();
-      })
-      .catch(function () {}); // offline: keep using what we have
+  function fallback() {
+    var cached = get(CODE);
+    if (valid(cached)) run(cached);
+    else fetch('app.html').then(function (r) { return r.text(); }).then(run);
   }
-
-  if (valid(cached)) { run(cached); checkForUpdate(cached); }
-  else fetch('app.html').then(function (r) { return r.text(); }).then(function (h) { run(h); checkForUpdate(h); });
+  var done = false;
+  var timer = setTimeout(function () { if (!done) { done = true; fallback(); } }, 1500); // slow network: don't wait
+  fetch(REMOTE + '?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.text() : null; })
+    .then(function (h) {
+      if (valid(h) && h !== get(BAD)) {
+        set(CODE, h);
+        if (!done) { done = true; clearTimeout(timer); run(h); }
+      } else if (!done) { done = true; clearTimeout(timer); fallback(); }
+    })
+    .catch(function () { if (!done) { done = true; clearTimeout(timer); fallback(); } });
 })();
 </script>
 </body>

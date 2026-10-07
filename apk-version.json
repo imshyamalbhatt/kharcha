@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "2.1",
+  "versionCode": 4,
+  "versionName": "2.2",
   "url": "https://github.com/imshyamalbhatt/kharcha/releases/latest/download/PocketMoney.apk",
-  "notes": "New green look with a green app icon and launch screen."
+  "notes": "Spends from your bank SMS get picked up automatically, udhaar reminders go to your friend's WhatsApp, and future updates install inside the app."
 }

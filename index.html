@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.1">
-<meta name="pm-notes" content="Fresh green look, budget always on your dashboard, and Udhaar is live.">
+<meta name="pm-version" content="2.2">
+<meta name="pm-notes" content="Updates install inside the app, bank SMS spends get picked up for you, and udhaar nudges go straight to your friend's WhatsApp.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -199,7 +199,8 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .switch input:checked+span::after{transform:translateX(20px)}
 
 .ask{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px}
-#upd{z-index:70}
+#gate{z-index:80} /* above the splash: decided before the app shows */
+#gate .backdrop{background:rgba(6,20,14,.7)}
 .ask[hidden]{display:none}
 .ask-box{position:relative;background:var(--card);border-radius:18px;padding:20px;max-width:360px;width:100%}
 .ask-box p{margin:0 0 4px;font-size:16px;line-height:1.45}
@@ -270,10 +271,6 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 
 <main>
   <div class="demo-bar" id="demoBar" hidden><b>Preview.</b> Sample data, separate from your phone.</div>
-  <div class="banner info" id="apkBar" hidden>
-    <div class="grow"><b>New app version ready</b><div class="sub" id="apkNotes"></div></div>
-    <button class="btn primary" id="apkGet" style="flex:none;padding:10px 14px">Download</button>
-  </div>
   <section id="tab-home" class="tab active"></section>
   <section id="tab-history" class="tab">
     <div style="display:flex;gap:8px">
@@ -410,6 +407,15 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
       <div><b>Daily nudge at 9 PM</b><div class="sub">"Quick one: what did today cost you?"</div></div>
       <label class="switch"><input type="checkbox" id="nudge"><span></span></label>
     </div>
+    <div class="section-title">Auto-detect spends</div>
+    <div class="switch-row">
+      <div><b>Read bank & UPI SMS</b><div class="sub">When your bank texts "Rs.250 sent to Swiggy", you get a notification within seconds and the spend waits on Home for a one-tap add. Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</div></div>
+      <label class="switch"><input type="checkbox" id="smsOn"><span></span></label>
+    </div>
+    <div class="sub" style="background:var(--pm-soft);border-radius:10px;padding:8px 10px;margin-top:4px">No alert on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? Open phone Settings → Apps → Pocket Money and turn on <b>Autostart</b> (or set Battery to <b>No restrictions</b>).</div>
+    <div class="section-title">Udhaar WhatsApp message</div>
+    <textarea id="waText" class="txt" rows="3" maxlength="300" style="resize:vertical"></textarea>
+    <div class="sub" style="margin-top:4px">Use {name}, {amount} and {date}. You still tap Send in WhatsApp yourself.</div>
     <div class="section-title">Your data</div>
     <div class="stack" style="margin-top:6px">
       <button class="btn ghost" id="btnBackup">Download backup</button>
@@ -430,14 +436,18 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   </div>
 </div>
 
-<!-- "New version" pop-up: new app code (Update now) or a new APK (Download) -->
-<div id="upd" class="ask" hidden>
+<!-- Update gate: shown at launch when a newer APK exists. Update or Cancel (closes the app). -->
+<div id="gate" class="ask" hidden>
   <div class="backdrop"></div>
   <div class="ask-box" style="text-align:center">
     <img src="assets/logo.webp" alt="" style="width:64px;height:64px;border-radius:16px" onerror="this.onerror=null;this.src='https://imshyamalbhatt.github.io/kharcha/assets/logo.webp'">
-    <div id="updTitle" style="font-size:20px;font-weight:700;margin-top:10px">New version ready ✨</div>
-    <p id="updNotes" class="sub" style="font-size:14px;margin:6px 0 0"></p>
-    <div class="actions"><button class="btn ghost" id="updLater">Later</button><button class="btn primary" id="updGo">Update now</button></div>
+    <div id="gateTitle" style="font-size:20px;font-weight:700;margin-top:10px">Update available</div>
+    <p id="gateNotes" class="sub" style="font-size:14px;margin:6px 0 0"></p>
+    <div id="gateProgress" hidden style="margin-top:14px">
+      <div class="progress" style="margin:0 0 8px"><div id="gateBar" style="width:0%;background:var(--pm)"></div></div>
+      <div class="sub" id="gatePct"></div>
+    </div>
+    <div class="actions" id="gateBtns"><button class="btn ghost" id="gateCancel">Cancel</button><button class="btn primary" id="gateGo">Update</button></div>
   </div>
 </div>
 
@@ -457,6 +467,7 @@ const MODES = [
 const CATS = [['Food','food'],['Groceries','groceries'],['Travel','travel'],['Shopping','shopping'],['Bills','bills'],['Health','health'],['Fun','fun'],['Other','other']];
 const OPS = '+-×÷';
 const UDHAAR = true; // set false to show Udhaar as "coming soon" again
+const WA_DEFAULT = 'Hey {name}, just a reminder about the {amount} from {date} 🙂';
 
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
@@ -511,15 +522,24 @@ function load() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   if (!d || !Array.isArray(d.expenses)) d = { expenses: [] };
-  d = { budget: 0, lastMode: 'UPI', loans: [], ...d };
-  d.settings = { nudge: true, ...(d.settings || {}) };
+  // pending: spends found in SMS waiting for review · smsSeen: dedupe keys of SMS already handled
+  // contacts: udhaar person -> linked WhatsApp contact · payeeCats/payeeTitles: what the user taught us per payee
+  d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, ...d };
+  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, ...(d.settings || {}) };
   if (d.onboarded === undefined) d.onboarded = d.expenses.length > 0; // existing users skip the intro
   return d;
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
 
 if (demo && !fresh && !db.demoSeeded && !db.expenses.length) {
-  db.expenses = sampleData(); db.loans = sampleLoans(); db.budget = 20000; db.demoSeeded = true; db.onboarded = true; save();
+  db.expenses = sampleData(); db.loans = sampleLoans(); db.budget = 20000; db.demoSeeded = true; db.onboarded = true;
+  db.contacts = { rahul: { name: 'Rahul Mehta', phone: '919800000000' } };
+  db.pending = [ // what "Found in your SMS" looks like
+    { id: 'ds1', amount: 250, mode: 'UPI', payeeKey: 'swiggy', title: 'Swiggy', category: 'Food', date: today(), at: Date.now() - 3600e3, ref: '428912345678' },
+    { id: 'ds2', amount: 149, mode: 'UPI', payeeKey: 'jio recharge', title: 'Jio recharge', category: 'Bills', date: today(), at: Date.now() - 7200e3, ref: '428912345684' },
+    { id: 'ds3', amount: 1299, mode: 'Card', payeeKey: 'amazon pay india', title: 'Amazon', category: 'Shopping', date: addDays(-1), at: Date.now() - 90000e3, ref: '' },
+  ];
+  save();
 }
 function sampleData() {
   const rows = [
@@ -545,10 +565,11 @@ function sampleLoans() {
 }
 
 // In-app confirm box (browser confirm() popups are blocked in some places)
-function ask(msg, yesLabel) {
+function ask(msg, yesLabel, kind = 'danger-fill') { // kind: 'danger-fill' for destructive, 'primary' otherwise
   return new Promise(resolve => {
     $('#askMsg').textContent = msg;
     $('#askYes').textContent = yesLabel;
+    $('#askYes').className = 'btn ' + kind;
     $('#ask').hidden = false;
     const done = v => { $('#ask').hidden = true; resolve(v); };
     $('#askYes').onclick = () => done(true);
@@ -635,13 +656,192 @@ function people() {
   });
   return Object.values(map);
 }
+// WhatsApp nudge: opens the linked friend's own chat with the message typed; the user taps Send.
+// (WhatsApp lets no app send from a personal number by itself.)
+const contactOf = name => db.contacts[personKey(name)];
+function waPhone(raw) {
+  const d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 10) return '91' + d;
+  if (d.length === 11 && d[0] === '0') return '91' + d.slice(1);
+  return d;
+}
 function waLink(l) {
-  const msg = `Hey ${l.person.trim()}, just a reminder about the ${money(leftOf(l))} from ${shortDate(l.date)} 🙂`;
-  return 'https://wa.me/?text=' + encodeURIComponent(msg);
+  const c = contactOf(l.person);
+  const msg = (db.settings.waText || WA_DEFAULT)
+    .replace(/\{name\}/g, (c ? c.name : l.person).trim().split(' ')[0])
+    .replace(/\{amount\}/g, money(leftOf(l)))
+    .replace(/\{date\}/g, shortDate(l.date));
+  return `https://wa.me/${c ? c.phone : ''}?text=` + encodeURIComponent(msg);
+}
+// Link an udhaar person to one phone contact, using Android's own picker (no contacts permission).
+async function linkContact(person) {
+  let c;
+  if (native && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('ContactPicker')) {
+    try { c = await Capacitor.Plugins.ContactPicker.pick(); } catch (e) { return false; } // cancelled
+  } else if (demo || !native) {
+    c = { name: `${person.trim()} (demo contact)`, phone: '9800000000' };
+    toast('On the phone, your contact list opens here');
+  } else { toast('Update the app to link contacts'); return false; }
+  db.contacts[personKey(person)] = { name: c.name, phone: waPhone(c.phone) };
+  save(); render();
+  toast(`Linked to ${c.name}'s WhatsApp`);
+  return true;
 }
 function openExternal(url) {
   if (native) location.href = url; // Capacitor hands non-app links to the phone (WhatsApp, browser)
   else window.open(url, '_blank', 'noopener');
+}
+
+// ---------- SMS auto-capture: bank / UPI debit SMS -> "Found in your SMS" review list ----------
+// The APK's SmsReader plugin only hands over raw messages; all parsing is here, so new bank
+// formats ship as online updates. Nothing is uploaded. Tested against HDFC, ICICI, SBI, Axis,
+// Kotak, BOB, PNB and Paytm Payments Bank formats (credits, OTPs, promos, ATM, failed: ignored).
+const BRANDS = [
+  // [match, display name, category]
+  [/swiggy/i, 'Swiggy', 'Food'], [/zomato/i, 'Zomato', 'Food'], [/domino/i, "Domino's", 'Food'], [/mcdonald/i, "McDonald's", 'Food'],
+  [/\bkfc\b/i, 'KFC', 'Food'], [/starbucks/i, 'Starbucks', 'Food'], [/chai ?point/i, 'Chai Point', 'Food'], [/eatclub|box8|faasos|behrouz/i, 'Food order', 'Food'],
+  [/blinkit|grofers/i, 'Blinkit', 'Groceries'], [/zepto/i, 'Zepto', 'Groceries'], [/bigbasket|bbnow/i, 'BigBasket', 'Groceries'], [/instamart/i, 'Instamart', 'Groceries'],
+  [/dmart|avenue supermart/i, 'DMart', 'Groceries'], [/jiomart/i, 'JioMart', 'Groceries'], [/reliance (fresh|smart)/i, 'Reliance Fresh', 'Groceries'],
+  [/uber/i, 'Uber', 'Travel'], [/\bola\b|olacabs|ani ?technologies/i, 'Ola', 'Travel'], [/rapido/i, 'Rapido', 'Travel'], [/irctc/i, 'IRCTC', 'Travel'],
+  [/redbus/i, 'redBus', 'Travel'], [/makemytrip|\bmmt\b/i, 'MakeMyTrip', 'Travel'], [/indigo/i, 'IndiGo', 'Travel'], [/fastag/i, 'FASTag', 'Travel'],
+  [/\bmetro\b/i, 'Metro', 'Travel'], [/petrol|fuel|hpcl|bpcl|iocl|indian ?oil|bharat petroleum|hp pay|shell/i, 'Fuel', 'Travel'],
+  [/amazon|amzn/i, 'Amazon', 'Shopping'], [/flipkart/i, 'Flipkart', 'Shopping'], [/myntra/i, 'Myntra', 'Shopping'], [/ajio/i, 'AJIO', 'Shopping'],
+  [/meesho/i, 'Meesho', 'Shopping'], [/nykaa/i, 'Nykaa', 'Shopping'], [/croma/i, 'Croma', 'Shopping'], [/decathlon/i, 'Decathlon', 'Shopping'],
+  [/\bjio\b|jio ?recharge|reliance ?jio/i, 'Jio recharge', 'Bills'], [/airtel/i, 'Airtel', 'Bills'], [/vodafone|\bvi\b recharge/i, 'Vi recharge', 'Bills'],
+  [/bsnl/i, 'BSNL', 'Bills'], [/electricity|bescom|msedcl|torrent ?power|tata ?power|adani ?electric|dgvcl|ugvcl|mgvcl|pgvcl|bses/i, 'Electricity bill', 'Bills'],
+  [/gas|indane|bharatgas/i, 'Gas bill', 'Bills'], [/broadband|fibernet|act ?fibernet|hathway/i, 'Broadband', 'Bills'], [/\blic\b|insurance/i, 'Insurance', 'Bills'],
+  [/apollo/i, 'Apollo', 'Health'], [/pharmeasy/i, 'PharmEasy', 'Health'], [/\b1mg\b|tata ?1mg/i, 'Tata 1mg', 'Health'], [/netmeds/i, 'Netmeds', 'Health'],
+  [/medplus|pharmacy|chemist|medical/i, 'Pharmacy', 'Health'], [/hospital|clinic|diagnostic/i, 'Hospital', 'Health'],
+  [/netflix/i, 'Netflix', 'Fun'], [/spotify/i, 'Spotify', 'Fun'], [/hotstar|jiocinema/i, 'Hotstar', 'Fun'], [/prime ?video/i, 'Prime Video', 'Fun'],
+  [/bookmyshow|bigtree/i, 'BookMyShow', 'Fun'], [/\bpvr\b|inox/i, 'PVR INOX', 'Fun'], [/youtube/i, 'YouTube Premium', 'Fun'],
+];
+const SMS_SKIP = /\botp\b|one.?time.?pass|verification code|will be debited|to be debited|due (on|date|by)|is due|requested (money|rs|inr)|has requested|collect request|autopay of .{0,40}(will|scheduled)|mandate (is )?(registered|created|set)|declined|\bfailed\b|unsuccessful|reversed|reversal|\batm\b|cash withdrawal|withdrawn|pre-?approved|apply now|loan (of|up ?to)/i;
+const SMS_DEBIT = /debited|\bspent\b|\bsent\b|money sent|\bpaid\b|\bdr\.?(?=\s|$)|deducted|\btxn (of )?(rs|inr)|\bpurchase\b|trf to/i;
+const SMS_CREDIT_TO_ME = /credited to (your )?([a-z]+ )?(bank )?(a\/?c|ac|acct|account)|(a\/?c|acct|account)[^.;]{0,40}\bcredited\b|\breceived\b|\brefund|cashback/i;
+const SMS_STRONG_DEBIT = /debited|\bspent\b|\bdr\.?(?=\s|$)|money sent|\bsent rs/i;
+function smsAmount(body) {
+  const b = body
+    .replace(/(avl\.?|avail\.?|available|avbl\.?)\s*(bal(ance)?|lmt|limit)\s*[:\-]?\s*(rs\.?|inr|₹)?\s*[\d,]+(\.\d+)?/ig, ' ')
+    .replace(/\b(bal(ance)?|limit)\s*[:\-]?\s*(rs\.?|inr|₹)\s*[\d,]+(\.\d+)?/ig, ' ');
+  const m = /(?:rs\.?|inr|₹)\s*:?\s*([\d,]+(?:\.\d{1,2})?)/i.exec(b) || /debited (?:by|for|with)\s*([\d,]+(?:\.\d{1,2})?)/i.exec(b);
+  return m ? round2(parseFloat(m[1].replace(/,/g, ''))) : 0;
+}
+function smsPayee(body) {
+  const pats = [
+    /\bto\s+vpa\s+([\w.\-]+@[\w.\-]+)/i, /\b(?:cr\.?|credited)\s+to\s+([\w.\-]+@[\w.\-]+)/i, /\bto\s+([\w.\-]+@[\w.\-]+)/i,
+    /;\s*([^;.\n]+?)\s+credited/i, /\btrf to\s+(.+?)\s+ref/i, /upi\/(?:p2[ma]|[a-z0-9]+)\/\d+\/([^\/\n]+)/i,
+    /\bsent to\s+(.+?)\s+from\b/i, /\bpaid to\s+(.+?)(?:\s+on\b|\s+via\b|\.|\n|$)/i, /\bfor\s+(.+?)\s+auto ?pay/i,
+    /\bat\s+(.+?)\s+on\s+\d/i, /\bat\s+([^\n.]+?)(?:\.|\n|\s+by\s+upi|\s+on\b|$)/i, /\d{1,2}-[a-z]{3}-\d{2,4}\s+on\s+(.+?)\./i, /\n\s*to\s+([^\n]+)/i,
+  ];
+  for (const p of pats) { const m = p.exec(body); if (m && m[1].trim()) return m[1].trim(); }
+  return '';
+}
+function cleanPayee(raw) {
+  let s = raw.replace(/^(paytm|pyu|razorpay|rzp|cashfree|phonepe|bharatpe)\s*\*\s*/i, '').trim();
+  if (s.includes('@')) {
+    const local = s.split('@')[0];
+    if (/^\+?\d{6,}$/.test(local.replace(/[.\-]/g, ''))) return { key: s.toLowerCase(), name: '' }; // phone-number VPA: a person
+    s = local.replace(/[._\-]+/g, ' ').replace(/\d+$/, '').trim();
+  }
+  s = s.replace(/\s{2,}/g, ' ').replace(/[.,;:]+$/, '').trim().slice(0, 40);
+  return { key: s.toLowerCase(), name: s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) };
+}
+// Returns { amount, mode, payeeKey, title, category, ref } for a debit SMS, or null.
+function parseSms(body, address) {
+  if (!body || /^\+?\d{6,}$/.test(String(address || '').replace(/\s/g, ''))) return null; // personal numbers
+  if (SMS_SKIP.test(body) || !SMS_DEBIT.test(body)) return null;
+  if (SMS_CREDIT_TO_ME.test(body) && !SMS_STRONG_DEBIT.test(body)) return null;
+  const amount = smsAmount(body);
+  if (!(amount > 0)) return null;
+  const mode = /upi|vpa|@[a-z]/i.test(body) ? 'UPI' : /card|\bpos\b/i.test(body) ? 'Card' : 'UPI';
+  const { key, name } = cleanPayee(smsPayee(body));
+  const brand = BRANDS.find(([re]) => re.test(key) || re.test(name));
+  const ref = (/(?:upi[\s:/\-]*(?:ref(?:\.|erence)?)?\s*(?:no\.?)?|ref(?:\.|erence)?\s*(?:no\.?|number)?|refno|rrn|txn ?id|\bby upi)[\s:#.\-]*(\d{9,})/i.exec(body) || /\b(\d{12})\b/.exec(body) || [])[1] || '';
+  return {
+    amount, mode, ref,
+    payeeKey: key || (mode === 'Card' ? 'card payment' : 'upi payment'),
+    title: brand ? brand[1] : name || (mode === 'Card' ? 'Card payment' : 'UPI payment'),
+    category: brand ? brand[2] : 'Other',
+  };
+}
+
+let scanning = false;
+async function scanSms(quiet) {
+  if (!native || !db.settings.sms || scanning) return;
+  if (!(Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('SmsReader'))) return;
+  scanning = true;
+  try {
+    const since = db.smsSince || Date.now() - 30 * 864e5; // first scan: the last 30 days
+    const res = await Capacitor.Plugins.SmsReader.read({ since, limit: 3000 });
+    const seen = new Set(db.smsSeen);
+    let found = 0, newest = since;
+    for (const m of res.messages || []) {
+      newest = Math.max(newest, m.date);
+      const p = parseSms(m.body, m.address);
+      if (!p) continue;
+      const key = p.ref || `${m.address}|${p.amount}|${Math.round(m.date / 60000)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const d = ymd(new Date(m.date));
+      const dup = db.expenses.find(e => e.date === d && Math.abs(e.amount - p.amount) < 0.01);
+      db.pending.push({
+        id: 'sms' + key, ...p, date: d, at: m.date,
+        title: db.payeeTitles[p.payeeKey] || p.title, category: db.payeeCats[p.payeeKey] || p.category,
+        dupOf: dup ? dup.title : '',
+      });
+      found++;
+    }
+    db.smsSeen = [...seen].slice(-3000);
+    db.smsSince = newest;
+    save();
+    if (found) { render(); if (!quiet) toast(`Found ${found} spend${found === 1 ? '' : 's'} in your SMS`); }
+  } catch (e) {
+    if (e && e.code === 'DENIED') { db.settings.sms = false; save(); toast('SMS permission is needed for auto-detect'); }
+  } finally { scanning = false; }
+}
+// Automatic mode: SmsReceiver.java notifies within seconds of a bank SMS (even with the app
+// closed); while the app is open it also asks us to rescan. Wait a moment first: the phone's
+// SMS app saves the message to the inbox a little after it arrives.
+const smsPlugin = () => native && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('SmsReader') ? Capacitor.Plugins.SmsReader : null;
+async function setupSmsAuto() {
+  const P = smsPlugin(); if (!P) return;
+  try {
+    await P.setAutoDetect({ enabled: !!db.settings.sms });
+    await P.addListener('smsReceived', () => { setTimeout(() => scanSms(), 3000); setTimeout(() => scanSms(), 12000); });
+  } catch (e) {}
+}
+function pendingCard() {
+  if (!db.pending.length) return '';
+  const list = [...db.pending].sort((a, b) => b.at - a.at);
+  return `<div class="card"><div class="card-head"><span class="label">${icon('sparkles', 'mode-ic')} Found in your SMS · ${list.length}</span>
+      <button class="link-btn" data-pall>Add all</button></div>` +
+    list.slice(0, 5).map(p => `<div class="item" data-pedit="${esc(p.id)}">
+      <div class="ico">${catIcon(p.category)}</div>
+      <div class="mid"><div class="t">${esc(p.title)}</div>
+        <div class="m">${modeIcon(p.mode)} ${p.mode} · ${dayLabel(p.date)}${p.dupOf ? ` · <span class="over">Maybe added as "${esc(p.dupOf)}"</span>` : ''}</div></div>
+      <div class="a">${money(p.amount)}</div>
+      <button class="close" data-pno="${esc(p.id)}" aria-label="Ignore">${icon('x')}</button>
+      <button class="close" data-pok="${esc(p.id)}" aria-label="Add" style="background:var(--pm);color:#fff">${icon('check')}</button>
+    </div>`).join('') + (list.length > 5 ? `<div class="sub" style="padding-top:8px">+ ${list.length - 5} more after these</div>` : '') + '</div>';
+}
+function learnPayee(p, title, category) {
+  db.payeeCats[p.payeeKey] = category;
+  if (title && title !== p.title) db.payeeTitles[p.payeeKey] = title;
+}
+function acceptPending(id, quiet) {
+  const p = db.pending.find(x => x.id === id);
+  if (!p) return;
+  db.expenses.push({ id: uid(), title: p.title, amount: p.amount, mode: p.mode, category: p.category, date: p.date, note: 'From SMS', createdAt: p.at || Date.now() });
+  learnPayee(p, p.title, p.category);
+  db.pending = db.pending.filter(x => x.id !== id);
+  save();
+  if (!quiet) { render(); toast(`Added ${p.title} · ${money(p.amount)}`); }
+}
+function ignorePending(id) {
+  const p = db.pending.find(x => x.id === id);
+  db.pending = db.pending.filter(x => x.id !== id);
+  save(); render();
+  if (p) toast('Ignored', { label: 'Undo', fn: () => { db.pending.push(p); save(); render(); } });
 }
 
 // ---------- dashboard ----------
@@ -688,6 +888,9 @@ function renderHome() {
       <div class="quip">${esc(db.expenses.length ? quip(items) : line('emptyAll'))}</div>
     </div>`;
   }
+
+  // 1b. Spends found in SMS, waiting for a tap
+  h += pendingCard();
 
   // 2. Budget: always shown, with days left in the month
   h += `<div class="card"><div class="card-head"><span class="label">${monthName} budget</span>
@@ -811,7 +1014,11 @@ function renderUdhaar() {
           <div class="sub">${p.open.length} open</div></div>
         <div class="net ${net >= 0 ? 'get' : 'owe'}">${money(Math.abs(net))}<small>${net >= 0 ? 'you get' : 'you owe'}</small></div>
       </div>
-      ${expanded ? `<div class="person-body">${p.open.sort(byNewest).map(loanRow).join('')}
+      ${expanded ? `<div class="person-body">
+        <div class="sub" style="display:flex;align-items:center;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)">${icon('chat', 'mode-ic')}
+          ${contactOf(p.name) ? `WhatsApp: <b style="color:var(--ink)">${esc(contactOf(p.name).name)}</b> <button class="link-btn" data-link="${esc(p.name)}" style="margin-left:auto">Change</button>`
+            : `No WhatsApp contact linked <button class="link-btn" data-link="${esc(p.name)}" style="margin-left:auto">Link contact</button>`}</div>
+        ${p.open.sort(byNewest).map(loanRow).join('')}
         <button class="link-btn" data-addfor="${esc(p.name)}">${icon('plus')}Add for ${esc(p.name)}</button></div>` : ''}
     </div>`;
   });
@@ -871,12 +1078,14 @@ function deleteFromMenu() {
   toast('Gone. Changed your mind?', { label: 'Undo', fn: () => { db.expenses.push(removed); save(); render(); toast('Restored'); } });
 }
 
+// preset: optional { title, category, amount, mode, date, pendingId } (e.g. a spend found in SMS)
 function openForm(e, swap, preset) {
+  const pr = preset || {};
   form = e
     ? { id: e.id, expr: String(e.amount), mode: e.mode, category: e.category }
-    : { id: null, expr: '', mode: db.lastMode || 'UPI', category: (preset && preset.category) || 'Other' };
-  $('#fTitle').value = e ? e.title : (preset && preset.title) || '';
-  $('#fDate').value = e ? e.date : today();
+    : { id: null, expr: pr.amount ? String(pr.amount) : '', mode: pr.mode || db.lastMode || 'UPI', category: pr.category || 'Other', pendingId: pr.pendingId };
+  $('#fTitle').value = e ? e.title : pr.title || '';
+  $('#fDate').value = e ? e.date : pr.date || today();
   $('#fNote').value = e ? e.note : '';
   $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
   $('#btnDelete').style.display = e ? '' : 'none';
@@ -965,6 +1174,12 @@ function saveForm() {
   };
   if (old) db.expenses[db.expenses.indexOf(old)] = rec; else db.expenses.push(rec);
   db.lastMode = form.mode;
+  const fromSms = form.pendingId && db.pending.find(x => x.id === form.pendingId);
+  if (fromSms) { // reviewed SMS spend: remember the user's heading/category for this payee
+    rec.note = rec.note || 'From SMS';
+    learnPayee(fromSms, title, form.category);
+    db.pending = db.pending.filter(x => x.id !== form.pendingId);
+  }
   save();
   hideSheets();
   if (history.state && history.state.sheet) history.back();
@@ -1023,6 +1238,12 @@ function saveLoan() {
   toast(old ? 'Updated' : rec.type === 'gave'
     ? `Noted: ${person} has your ${money(amount)}.${remindOn ? ` Reminder on ${shortDate(remindOn)}.` : ''}`
     : `Noted: you owe ${person} ${money(amount)}.`);
+  // New "I gave" with a reminder: link the exact contact so the nudge reaches the right person
+  if (!old && rec.type === 'gave' && remindOn && !contactOf(person)) {
+    setTimeout(async () => {
+      if (await ask(`Send the reminder to ${person} on WhatsApp? Pick ${person} from your contacts so it goes to the right person.`, 'Pick contact', 'primary')) linkContact(person);
+    }, 400);
+  }
 }
 
 let loanId = null;
@@ -1101,40 +1322,107 @@ async function syncNotifications() {
     const list = [];
     const look = { smallIcon: 'ic_stat_coin', iconColor: '#0A8F5C' };
     if (db.settings.nudge) list.push({ id: 1, title: 'Pocket Money', body: line('nudge'), schedule: { on: { hour: 21, minute: 0 }, allowWhileIdle: true }, ...look });
+    // Udhaar: a heads-up the evening before (8 PM), then the nudge itself at 10 AM on the day
     db.loans.filter(l => UDHAAR && isOpen(l) && l.remindOn).forEach(l => {
-      const at = new Date(l.remindOn + 'T10:00:00');
-      if (at <= new Date()) return;
-      list.push({
-        id: nid(l.id), schedule: { at, allowWhileIdle: true }, ...look,
-        title: l.type === 'gave' ? `Collect ${money(leftOf(l))} from ${l.person}` : `You owe ${l.person} ${money(leftOf(l))}`,
-        body: l.type === 'gave' ? `${l.person} still has your ${money(leftOf(l))}. Time for a polite nudge?` : `Due today. Clear it and stay friends. 🙂`,
+      const amt = money(leftOf(l)), gave = l.type === 'gave', extra = { loanId: l.id };
+      const pre = new Date(l.remindOn + 'T20:00:00'); pre.setDate(pre.getDate() - 1);
+      const day = new Date(l.remindOn + 'T10:00:00');
+      if (pre > new Date()) list.push({
+        id: nid(l.id + 'pre'), schedule: { at: pre, allowWhileIdle: true }, ...look, actionTypeId: 'UDHAAR_PRE', extra: { ...extra, kind: 'pre' },
+        title: gave ? `Tomorrow: reminding ${l.person} about ${amt}` : `Tomorrow: you owe ${l.person} ${amt}`,
+        body: gave ? `At 10 AM we'll get the WhatsApp message ready for you.` : `Settle it tomorrow and stay friends 🙂`,
+      });
+      if (day > new Date()) list.push({
+        id: nid(l.id), schedule: { at: day, allowWhileIdle: true }, ...look, actionTypeId: gave ? 'UDHAAR_SEND' : 'UDHAAR_OWE', extra: { ...extra, kind: 'day' },
+        title: gave ? `Send ${l.person} the reminder?` : `You owe ${l.person} ${amt} today`,
+        body: gave ? `Tap to open WhatsApp with the message ready: ${amt} from ${shortDate(l.date)}.` : `Due today. Clear it and stay friends 🙂`,
       });
     });
     if (list.length && await notifAllowed()) await ln.schedule({ notifications: list });
   } catch (e) {}
 }
 
-// ---------- new APK available ----------
-let apkUrl = '';
-async function checkApk() {
-  if (!native) return;
+// Buttons on udhaar notifications, and what tapping them does
+async function setupNotificationActions() {
+  const ln = LN(); if (!ln) return;
   try {
-    const info = await Capacitor.Plugins.App.getInfo();
-    const r = await fetch(REMOTE + 'apk-version.json?t=' + Date.now(), { cache: 'no-store' });
-    const v = await r.json();
-    if (Number(v.versionCode) > Number(info.build)) {
-      apkUrl = v.url;
-      $('#apkNotes').textContent = v.notes || 'Tap Download, then Install.';
-      $('#apkBar').hidden = false;
-      let asked = false; // pop-up once per app session; the banner stays on screen after that
-      try { asked = sessionStorage.getItem('pm.apkAsked') === '1'; sessionStorage.setItem('pm.apkAsked', '1'); } catch (e) {}
-      if (!asked) offerUpdate({
-        title: `Pocket Money ${v.versionName || ''} is here`.trim(),
-        notes: `${v.notes || ''} Tap Download, then Install. Your data stays.`.trim(),
-        goLabel: 'Download', go: () => openExternal(apkUrl),
-      });
-    }
+    await ln.registerActionTypes({ types: [
+      { id: 'UDHAAR_SEND', actions: [{ id: 'send', title: 'Send on WhatsApp' }, { id: 'snooze', title: 'Snooze 1 day' }, { id: 'paid', title: 'Already paid' }] },
+      { id: 'UDHAAR_PRE', actions: [{ id: 'snooze', title: 'Snooze 1 day' }, { id: 'paid', title: 'Already paid' }] },
+      { id: 'UDHAAR_OWE', actions: [{ id: 'paid', title: 'I paid it' }, { id: 'snooze', title: 'Snooze 1 day' }] },
+    ] });
+    await ln.addListener('localNotificationActionPerformed', a => onNotificationAction(a.actionId, (a.notification && a.notification.extra) || {}));
   } catch (e) {}
+}
+function onNotificationAction(act, extra) {
+  const l = extra.loanId && db.loans.find(x => x.id === extra.loanId);
+  if (!l || !isOpen(l)) return;
+  if (act === 'send' || (act === 'tap' && extra.kind === 'day' && l.type === 'gave')) { openExternal(waLink(l)); return; }
+  if (act === 'snooze') {
+    l.remindOn = addDays(1); save(); syncNotifications(); render();
+    toast(`Snoozed: reminder on ${shortDate(l.remindOn)}`);
+    return;
+  }
+  tab = 'udhaar'; openPerson = personKey(l.person); render();
+  if (act === 'paid') { loanId = l.id; openPay(l); }
+}
+
+// ---------- new APK available: blocking "Update / Cancel" gate at launch ----------
+// Shyamal's rule: when a newer APK exists, the user must choose. Update downloads and
+// installs it inside the app (ApkUpdater plugin, APK 2.2+); Cancel closes the app.
+const demoGate = /[?&]demoapk=1/.test(location.search);
+async function checkApk() {
+  if (!native && !demoGate) return;
+  try {
+    let v, build;
+    if (native) {
+      build = Number((await Capacitor.Plugins.App.getInfo()).build);
+      v = await (await fetch(REMOTE + 'apk-version.json?t=' + Date.now(), { cache: 'no-store' })).json();
+    } else {
+      build = 0; v = { versionCode: 1, versionName: '2.2', notes: 'In-app updates: no more Chrome downloads.', url: '' };
+    }
+    if (Number(v.versionCode) > build) showGate(v);
+  } catch (e) {} // offline: open the app normally
+}
+function showGate(v) {
+  if (!$('#gate').hidden) return;
+  $('#gateTitle').textContent = `Update available: v${v.versionName}`;
+  $('#gateNotes').textContent = `${v.notes || ''} Your data stays safe.`.trim();
+  $('#gateProgress').hidden = true;
+  $('#gateBtns').hidden = false;
+  $('#gate').hidden = false;
+  $('#gateCancel').onclick = () => {
+    if (native) Capacitor.Plugins.App.exitApp();
+    else { $('#gate').hidden = true; toast('On the phone, the app closes here'); }
+  };
+  $('#gateGo').onclick = () => installApk(v);
+}
+function gateProgress(pct, text) {
+  $('#gateBtns').hidden = true;
+  $('#gateProgress').hidden = false;
+  $('#gateBar').style.width = pct + '%';
+  $('#gatePct').textContent = text || `Downloading update… ${pct}%`;
+}
+async function installApk(v) {
+  if (!native) { // laptop preview: pretend to download
+    let p = 0; const t = setInterval(() => { p += 10; gateProgress(p); if (p >= 100) { clearInterval(t); gateProgress(100, 'Android asks "Install?" here. Tap Install.'); } }, 150);
+    return;
+  }
+  const P = Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('ApkUpdater') ? Capacitor.Plugins.ApkUpdater : null;
+  if (!P) { openExternal(v.url); return; } // APK 2.1 and older: no in-app installer yet, use the browser
+  gateProgress(0);
+  let sub = null;
+  try {
+    sub = await P.addListener('progress', e => gateProgress(e.percent));
+    await P.install({ url: v.url });
+    gateProgress(100, 'Tap Install on the next screen.');
+    setTimeout(() => { $('#gateBtns').hidden = false; $('#gateGo').textContent = 'Install again'; }, 4000); // if they backed out
+  } catch (e) {
+    $('#gatePct').textContent = 'Download failed. Check your internet and try again.';
+    $('#gateBtns').hidden = false;
+  } finally {
+    if (sub && sub.remove) sub.remove();
+  }
 }
 
 // ---------- settings / data ----------
@@ -1240,7 +1528,6 @@ $('#payFull').onclick = () => { const l = db.loans.find(x => x.id === loanId); i
 $('#lPerson').oninput = renderLoanForm;
 $('#search').oninput = renderHistory;
 $('#fTitle').oninput = renderSuggest;
-$('#apkGet').onclick = () => apkUrl && openExternal(apkUrl);
 
 $('#keypad').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -1253,10 +1540,15 @@ $('#amountBox').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.p
 ['#fTitle', '#fNote', '#fDate'].forEach(s => $(s).addEventListener('focus', () => { if (keypadOpen()) closeKeypad(); }));
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-sugg],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget]');
+  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-sugg],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link]');
   if (!el) return;
   const d = el.dataset;
-  if ('close' in d) closeSheets();
+  if (d.pok) acceptPending(d.pok);
+  else if (d.pno) ignorePending(d.pno);
+  else if ('pall' in d) { const n = db.pending.length; [...db.pending].forEach(p => acceptPending(p.id, true)); render(); toast(`Added ${n} spend${n === 1 ? '' : 's'} from SMS`); }
+  else if (d.pedit) { const p = db.pending.find(x => x.id === d.pedit); if (p) openForm(null, false, { ...p, pendingId: p.id }); }
+  else if (d.link) linkContact(d.link);
+  else if ('close' in d) closeSheets();
   else if (d.go) { tab = d.go; render(); window.scrollTo(0, 0); }
   else if (d.id) { const x = db.expenses.find(v => v.id === d.id); if (x) openMenu(x); }
   else if (d.seg) {
@@ -1298,7 +1590,24 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Enter') saveForm();
 });
 
-$('#btnSettings').onclick = () => { $('#budget').value = db.budget || ''; $('#nudge').checked = db.settings.nudge; openSheet($('#settings')); };
+$('#btnSettings').onclick = () => {
+  $('#budget').value = db.budget || ''; $('#nudge').checked = db.settings.nudge;
+  $('#smsOn').checked = db.settings.sms; $('#waText').value = db.settings.waText || WA_DEFAULT;
+  openSheet($('#settings'));
+};
+$('#smsOn').onchange = async e => {
+  const P = smsPlugin();
+  if (!e.target.checked) { db.settings.sms = false; save(); if (P) P.setAutoDetect({ enabled: false }).catch(() => {}); toast('SMS auto-detect off'); return; }
+  if (!native) { e.target.checked = false; toast('Works in the phone app: it reads your bank SMS there'); return; }
+  if (!P) { e.target.checked = false; toast('Update the app to use SMS auto-detect'); return; }
+  db.settings.sms = true; db.smsSince = 0; save(); // first scan covers the last 30 days
+  await scanSms(); // asks Android for the SMS permission
+  e.target.checked = db.settings.sms; // turned back off if permission was denied
+  P.setAutoDetect({ enabled: db.settings.sms }).catch(() => {});
+  if (db.settings.sms) notifAllowed().catch(() => {}); // the instant "₹250 spent" alerts need notifications
+  if (db.settings.sms && !db.pending.length) toast('Auto-detect on. Your next UPI payment will pop up within seconds.');
+};
+$('#waText').onchange = e => { db.settings.waText = e.target.value.trim() || WA_DEFAULT; save(); syncNotifications(); toast('WhatsApp message saved'); };
 $('#btnBudget').onclick = () => {
   db.budget = Math.max(0, round2(Number($('#budget').value) || 0));
   save(); closeSheets(); render(); toast(db.budget ? `Budget set to ${money(db.budget)}` : 'Budget turned off');
@@ -1326,34 +1635,13 @@ render();
 // switch to a newly downloaded version right away unless the user is mid-entry.
 try { localStorage.setItem('kharcha.boot', 'ok'); } catch (e) {}
 
-// ---------- "new version" pop-ups ----------
+// ---------- small (online) updates: applied silently ----------
 const metaOf = (html, name) => ((new RegExp(`name="${name}" content="([^"]*)"`)).exec(html || '') || [])[1] || '';
 const thisVersion = metaOf(document.documentElement.outerHTML, 'pm-version');
-let splashDone = false;
-const updQueue = [];
-function offerUpdate(u) { updQueue.push(u); flushUpdates(); }
-function flushUpdates() {
-  if (!splashDone || !$('#upd').hidden || !updQueue.length) return;
-  const u = updQueue.shift();
-  $('#updTitle').textContent = u.title;
-  $('#updNotes').textContent = u.notes;
-  $('#updGo').textContent = u.goLabel;
-  $('#upd').hidden = false;
-  const close = () => { $('#upd').hidden = true; setTimeout(flushUpdates, 250); };
-  $('#updGo').onclick = () => { close(); u.go(); };
-  $('#updLater').onclick = () => { close(); if (u.later) u.later(); };
-}
-// Called by the loader (and checkLiveUpdate) once newer app code has been downloaded.
+// Called by the loader (APK 2.1 and older) and checkLiveUpdate once newer app code is downloaded.
+// Reload straight away unless the user is in the middle of something; then it applies next launch.
 window.kharchaUpdateReady = () => {
-  let html = '';
-  try { html = localStorage.getItem('kharcha.code') || ''; } catch (e) {}
-  const v = metaOf(html, 'pm-version'), notes = metaOf(html, 'pm-notes');
-  offerUpdate({
-    title: v ? `Version ${v} is ready ✨` : 'New version ready ✨',
-    notes: notes || 'Fresh improvements are waiting for you.',
-    goLabel: 'Update now', go: () => location.reload(),
-    later: () => toast("No problem. It'll apply next time you open the app."),
-  });
+  if (!document.querySelector('.sheet:not(.hidden)') && $('#ask').hidden && $('#gate').hidden) location.reload();
 };
 // After an update: one friendly line saying what's new
 if (thisVersion && db.seenVersion && db.seenVersion !== thisVersion) {
@@ -1379,18 +1667,18 @@ async function checkLiveUpdate() {
   } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { checkLiveUpdate(); checkApk(); }
+  if (document.visibilityState === 'visible') { checkLiveUpdate(); checkApk(); scanSms(); }
 });
 
+checkApk(); // straight away, so the update gate covers the splash before the app shows
 splash(() => {
-  splashDone = true; flushUpdates();
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
-  if (/[?&]demoupdate=1/.test(location.search)) offerUpdate({ title: `Version ${thisVersion} is ready ✨`, notes: metaOf(document.documentElement.outerHTML, 'pm-notes'), goLabel: 'Update now', go: () => location.reload(), later: () => toast("No problem. It'll apply next time you open the app.") });
-  if (/[?&]demoapk=1/.test(location.search)) offerUpdate({ title: 'Pocket Money 2.1 is here', notes: 'Colourful launch screen. Tap Download, then Install. Your data stays.', goLabel: 'Download', go: () => toast('On the phone this downloads the APK') });
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();
-  checkApk();
+  setupNotificationActions();
+  setupSmsAuto();
+  scanSms(true);
 });
 
 // Offline cache for the website version (not needed when files ship inside the APK)

@@ -37,8 +37,7 @@ iframe{display:block;border:0;width:100%;height:100%}
   <button id="reload">Restart app</button>
   <button id="reset">Reset sample data</button>
   <button id="fresh">Fresh install</button>
-  <button id="simUpd">Simulate update</button>
-  <button id="simApk">Simulate new APK</button>
+  <button id="simApk">Simulate update pop-up</button>
   <span class="hint">Uses your laptop copy, with sample data separate from your phone</span>
 </div>
 <div class="stage" id="stage">
@@ -83,7 +82,6 @@ $('#theme').onclick = () => { dark = !dark; applyTheme(); };
 const restart = (src) => { try { $('#app').contentWindow.sessionStorage.clear(); } catch (e) {} $('#app').src = src || '../index.html'; };
 $('#reload').onclick = () => restart($('#app').contentWindow.location.href);
 $('#reset').onclick = () => { try { $('#app').contentWindow.localStorage.removeItem('kharcha.v1'); } catch (e) {} restart('../index.html'); };
-$('#simUpd').onclick = () => restart('../index.html?demoupdate=1');
 $('#simApk').onclick = () => restart('../index.html?demoapk=1');
 $('#fresh').onclick = () => { try { $('#app').contentWindow.localStorage.removeItem('kharcha.v1'); } catch (e) {} restart('../index.html?fresh=1'); };
 $('#app').addEventListener('load', applyTheme);

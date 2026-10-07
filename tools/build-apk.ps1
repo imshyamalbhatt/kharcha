@@ -14,6 +14,9 @@ Copy-Item "$repo\index.html" "$cap\www\app.html"
 Copy-Item "$repo\android\loader.html" "$cap\www\index.html"
 Copy-Item "$repo\manifest.json", "$repo\icon-192.png", "$repo\icon-512.png", "$repo\icon-maskable-512.png" "$cap\www"
 Copy-Item "$repo\assets" "$cap\www\assets" -Recurse
+# native code (in-app updater plugin + its registration) is kept in the repo
+Copy-Item "$repo\android\native\*.java" "$cap\android\app\src\main\java\com\shyamal\kharcha\" -Force
+Copy-Item "$repo\android\native\AndroidManifest.xml" "$cap\android\app\src\main\AndroidManifest.xml" -Force
 
 $env:JAVA_HOME = "$b\jdk-21.0.12.1+1"; $env:ANDROID_HOME = "$b\sdk"; $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 Push-Location $cap; npx cap sync android; Pop-Location
