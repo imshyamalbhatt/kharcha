@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.3">
-<meta name="pm-notes" content="Split a bill with one tick, a cleaner add screen, udhaar nudges to your friend's WhatsApp, and updates that install inside the app.">
+<meta name="pm-version" content="2.4">
+<meta name="pm-notes" content="Bank SMS spends get picked up automatically, and a Dark theme you can turn on in Settings.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -408,6 +408,8 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   <div class="backdrop" data-close></div>
   <div class="panel">
     <div class="panel-head"><h2>Settings</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
+    <div class="section-title">Theme</div>
+    <div class="seg" id="themeSeg"></div>
     <div class="section-title">Monthly budget (₹)</div>
     <div class="row2" style="grid-template-columns:1fr auto">
       <input id="budget" class="txt" type="number" inputmode="decimal" min="0" placeholder="e.g. 20000 (0 = off)">
@@ -539,7 +541,7 @@ function load() {
   // pending: spends found in SMS waiting for review · smsSeen: dedupe keys of SMS already handled
   // contacts: udhaar person -> linked WhatsApp contact · payeeCats/payeeTitles: what the user taught us per payee
   d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, ...d };
-  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, ...(d.settings || {}) };
+  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', ...(d.settings || {}) };
   if (d.onboarded === undefined) d.onboarded = d.expenses.length > 0; // existing users skip the intro
   return d;
 }
@@ -1582,6 +1584,7 @@ document.addEventListener('click', e => {
     else if (d.seg === 'lType') { lf.type = d.val; renderLoanForm(); }
     else if (d.seg === 'lMode') { lf.mode = d.val; renderLoanForm(); }
     else if (d.seg === 'pMode') { payMode = d.val; $('#pMode').innerHTML = segHTML('pMode', modeOptions, payMode); }
+    else if (d.seg === 'theme') { db.settings.theme = d.val; save(); applyTheme(); renderThemeSeg(); }
   }
   else if (d.cat) { form.category = d.cat; renderPickers(); }
   else if (d.hmode) { histMode = d.hmode; renderHistory(); }
@@ -1647,6 +1650,19 @@ $('#btnWipe').onclick = async () => {
   if (!(await ask(`Delete all ${db.expenses.length} expenses and ${db.loans.length} udhaar entries? Download a backup first if unsure.`, 'Delete all'))) return;
   db.expenses = []; db.loans = []; save(); closeSheets(); render(); syncNotifications(); toast('All data deleted');
 };
+
+// Theme, like WhatsApp: System default follows the phone; Light / Dark override it.
+// The CSS already has both palettes keyed on :root[data-theme].
+function applyTheme() {
+  const t = db.settings.theme;
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+}
+function renderThemeSeg() {
+  $('#themeSeg').innerHTML = segHTML('theme', [['system', 'System default'], ['light', 'Light'], ['dark', 'Dark']], db.settings.theme || 'system');
+}
+applyTheme();
+renderThemeSeg();
 
 $('#demoBar').hidden = !demo;
 document.querySelectorAll('[data-ic]').forEach(el => { el.innerHTML = icon(el.dataset.ic); }); // static Lucide icons

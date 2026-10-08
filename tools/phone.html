@@ -51,7 +51,8 @@ iframe{display:block;border:0;width:100%;height:100%}
 </div>
 <script>
 const $ = s => document.querySelector(s);
-let dark = false;
+// null = leave the app's own Theme setting alone; true / false = the button below overrides it
+let dark = new URLSearchParams(location.search).get('dark') === '1' ? true : null;
 const STATUS = 28; // px of fake status bar painted over the app's header
 
 function layout() {
@@ -66,7 +67,7 @@ function layout() {
 function applyTheme() {
   try {
     const doc = $('#app').contentDocument;
-    doc.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    if (dark !== null) doc.documentElement.dataset.theme = dark ? 'dark' : 'light';
     // push the app's header below the fake status bar, like a real phone
     let st = doc.getElementById('bench-style');
     if (!st) { st = doc.createElement('style'); st.id = 'bench-style'; doc.head.appendChild(st); }
