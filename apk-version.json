@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "2.3",
+  "versionCode": 6,
+  "versionName": "2.4",
   "url": "https://github.com/imshyamalbhatt/kharcha/releases/latest/download/PocketMoney.apk",
-  "notes": "Split bills with one tick, a cleaner add screen, and updates that install right inside the app."
+  "notes": "Bank SMS spends get picked up automatically."
 }
