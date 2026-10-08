@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "2.1",
+  "versionCode": 5,
+  "versionName": "2.3",
   "url": "https://github.com/imshyamalbhatt/kharcha/releases/latest/download/PocketMoney.apk",
-  "notes": "Paused: 2.2 could not be installed on Shyamal's phone (see CLAUDE.md)."
+  "notes": "Split bills with one tick, a cleaner add screen, and updates that install right inside the app."
 }
