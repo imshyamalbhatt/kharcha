@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.2">
-<meta name="pm-notes" content="Updates install inside the app, bank SMS spends get picked up for you, and udhaar nudges go straight to your friend's WhatsApp.">
+<meta name="pm-version" content="2.3">
+<meta name="pm-notes" content="Split a bill with one tick, a cleaner add screen, udhaar nudges to your friend's WhatsApp, and updates that install inside the app.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -162,6 +162,12 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .amount-box.prompt{text-align:left;border-style:dashed}
 .amount-box.prompt #exprView{font-size:18px;font-weight:600;color:var(--pm);letter-spacing:0}
 .amount-box.prompt #resultView{font-weight:500;font-size:13px}
+.split-row{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600;padding:4px 2px 8px;cursor:pointer;width:max-content}
+.split-row input{width:18px;height:18px;accent-color:var(--pm);margin:0}
+.split-box{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:14px;color:var(--muted);margin:0 0 10px}
+.split-box[hidden]{display:none}
+.split-box .close{width:30px;height:30px;font-size:18px;font-weight:600}
+.split-box b{color:var(--ink);font-variant-numeric:tabular-nums}
 .keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;animation:up .15s ease-out}
 .keypad[hidden]{display:none}
 .keypad button{height:50px;border-radius:12px;border:0;background:var(--chip);font-size:20px;font-weight:500;user-select:none}
@@ -297,9 +303,14 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   <div class="panel">
     <div class="panel-head"><h2 id="sheetTitle">Add expense</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <input id="fTitle" class="txt" placeholder="Heading, e.g. Lunch, Petrol, Recharge" autocomplete="off" maxlength="60">
-    <div id="suggest" class="chips scroll"></div>
     <div class="amount-box" id="amountBox" role="button" tabindex="0" aria-label="Amount, tap to enter">
       <div id="exprView">₹0</div><div id="resultView"></div>
+    </div>
+    <label class="split-row"><input type="checkbox" id="fSplit"> Split this bill</label>
+    <div class="split-box" id="splitBox" hidden>
+      <span>between</span>
+      <button class="close" data-split="-1" aria-label="Fewer people">−</button><b id="splitN">2</b><button class="close" data-split="1" aria-label="More people">+</button>
+      <span>people · your share <b id="splitShare">₹0</b></span>
     </div>
     <div class="keypad" id="keypad" hidden>
       <button>7</button><button>8</button><button>9</button><button class="op">÷</button>
@@ -407,12 +418,14 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
       <div><b>Daily nudge at 9 PM</b><div class="sub">"Quick one: what did today cost you?"</div></div>
       <label class="switch"><input type="checkbox" id="nudge"><span></span></label>
     </div>
+    <div id="smsSection"><!-- shown only when the installed APK can read SMS -->
     <div class="section-title">Auto-detect spends</div>
     <div class="switch-row">
       <div><b>Read bank & UPI SMS</b><div class="sub">When your bank texts "Rs.250 sent to Swiggy", you get a notification within seconds and the spend waits on Home for a one-tap add. Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</div></div>
       <label class="switch"><input type="checkbox" id="smsOn"><span></span></label>
     </div>
     <div class="sub" style="background:var(--pm-soft);border-radius:10px;padding:8px 10px;margin-top:4px">No alert on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? Open phone Settings → Apps → Pocket Money and turn on <b>Autostart</b> (or set Battery to <b>No restrictions</b>).</div>
+    </div>
     <div class="section-title">Udhaar WhatsApp message</div>
     <textarea id="waText" class="txt" rows="3" maxlength="300" style="resize:vertical"></textarea>
     <div class="sub" style="margin-top:4px">Use {name}, {amount} and {date}. You still tap Send in WhatsApp yourself.</div>
@@ -448,6 +461,7 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
       <div class="sub" id="gatePct"></div>
     </div>
     <div class="actions" id="gateBtns"><button class="btn ghost" id="gateCancel">Cancel</button><button class="btn primary" id="gateGo">Update</button></div>
+    <button class="link-btn" id="gateSkip" hidden style="margin:12px auto 0;display:block">Continue with current version</button>
   </div>
 </div>
 
@@ -1090,28 +1104,22 @@ function openForm(e, swap, preset) {
   $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
   $('#btnDelete').style.display = e ? '' : 'none';
   $('#keypad').hidden = true; // folded until the amount is tapped
-  renderSuggest(); renderPickers(); updateAmount();
+  form.split = 2; $('#fSplit').checked = false; // heading starts blank: no suggestions (Shyamal's call)
+  renderPickers(); updateAmount();
   if (swap) swapSheet($('#sheet')); else openSheet($('#sheet'));
 }
 function renderPickers() {
   $('#fMode').innerHTML = segHTML('fMode', modeOptions, form.mode);
   $('#fCat').innerHTML = CATS.map(([c, ic]) => `<button class="chip ${form.category === c ? 'on' : ''}" data-cat="${c}">${icon(ic)}${c}</button>`).join('');
 }
-// Recent headings, most used first, so repeat spends are one tap
-function renderSuggest() {
-  const q = $('#fTitle').value.trim().toLowerCase();
-  const seen = {};
-  [...db.expenses].sort(byNewest).slice(0, 300).forEach(e => {
-    const k = e.title.trim().toLowerCase();
-    if (!seen[k]) seen[k] = { title: e.title.trim(), n: 0, last: e };
-    seen[k].n++;
-  });
-  const list = Object.entries(seen)
-    .filter(([k]) => !q || (k.includes(q) && k !== q))
-    .sort((a, b) => b[1].n - a[1].n).slice(0, 10);
-  $('#suggest').innerHTML = list.map(([k, v]) => `<button class="chip" data-sugg="${esc(k)}">${catIcon(v.last.category)} ${esc(v.title)}</button>`).join('');
-  $('#suggest').style.display = list.length ? '' : 'none';
-  renderSuggest.map = seen;
+// Split this bill (expenses only): the saved amount is your share of the total.
+function renderSplit() {
+  const on = $('#fSplit').checked;
+  $('#splitBox').hidden = !on;
+  if (!on) return;
+  $('#splitN').textContent = form.split;
+  const total = round2(calc(form.expr));
+  $('#splitShare').textContent = isFinite(total) && total > 0 ? money(round2(total / form.split)) : '₹0';
 }
 // The keypad stays folded away until the amount is tapped; until then a prompt sits there.
 const keypadOpen = () => !$('#keypad').hidden;
@@ -1128,8 +1136,9 @@ function updateAmount() {
   box.classList.toggle('prompt', prompt);
   box.classList.toggle('active', keypadOpen());
   if (prompt) {
-    $('#exprView').textContent = 'How much did it cost? Tap here.';
-    $('#resultView').textContent = 'Splitting a bill? Type 1200÷4.';
+    $('#exprView').textContent = 'Tap to enter amount';
+    $('#resultView').textContent = '';
+    renderSplit();
     return;
   }
   $('#exprView').textContent = '₹' + (s || '0');
@@ -1137,6 +1146,7 @@ function updateAmount() {
     const v = calc(s);
     $('#resultView').textContent = isFinite(v) ? '= ' + money(round2(v)) : '= ?';
   } else $('#resultView').textContent = '';
+  renderSplit();
 }
 function press(k) {
   let s = form.expr;
@@ -1162,14 +1172,17 @@ function press(k) {
 }
 function saveForm() {
   const title = $('#fTitle').value.trim();
-  const amount = round2(calc(form.expr));
+  const total = round2(calc(form.expr));
   if (!title) { toast('Add a heading'); $('#fTitle').focus(); return; }
-  if (!isFinite(amount) || amount <= 0) { toast('Enter an amount'); openKeypad(); return; }
+  if (!isFinite(total) || total <= 0) { toast('Enter an amount'); openKeypad(); return; }
+  const split = $('#fSplit').checked ? form.split : 1;
+  const amount = round2(total / split); // split bill: only your share counts as your spend
   const old = form.id && db.expenses.find(x => x.id === form.id);
   const first = !db.expenses.some(e => !String(e.id).startsWith('demo'));
   const rec = {
     id: form.id || uid(), title, amount, mode: form.mode, category: form.category,
-    date: $('#fDate').value || today(), note: $('#fNote').value.trim(),
+    date: $('#fDate').value || today(),
+    note: [split > 1 ? `Split ${split} ways, total ${money(total)}` : '', $('#fNote').value.trim()].filter(Boolean).join(' · '),
     createdAt: old ? old.createdAt : Date.now(),
   };
   if (old) db.expenses[db.expenses.indexOf(old)] = rec; else db.expenses.push(rec);
@@ -1390,12 +1403,22 @@ function showGate(v) {
   $('#gateNotes').textContent = `${v.notes || ''} Your data stays safe.`.trim();
   $('#gateProgress').hidden = true;
   $('#gateBtns').hidden = false;
+  $('#gateSkip').hidden = true;
+  $('#gateGo').textContent = 'Update';
   $('#gate').hidden = false;
   $('#gateCancel').onclick = () => {
     if (native) Capacitor.Plugins.App.exitApp();
     else { $('#gate').hidden = true; toast('On the phone, the app closes here'); }
   };
   $('#gateGo').onclick = () => installApk(v);
+  // Never lock anyone out: once an update attempt fails or is abandoned, the current version stays usable.
+  $('#gateSkip').onclick = () => { $('#gate').hidden = true; toast("Using the current version. We'll ask again next time."); };
+}
+function gateRetry(msg) {
+  if (msg) $('#gatePct').textContent = msg;
+  $('#gateBtns').hidden = false;
+  $('#gateGo').textContent = 'Try again';
+  $('#gateSkip').hidden = false;
 }
 function gateProgress(pct, text) {
   $('#gateBtns').hidden = true;
@@ -1409,17 +1432,20 @@ async function installApk(v) {
     return;
   }
   const P = Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('ApkUpdater') ? Capacitor.Plugins.ApkUpdater : null;
-  if (!P) { openExternal(v.url); return; } // APK 2.1 and older: no in-app installer yet, use the browser
+  if (!P) { // APK 2.1 and older: no in-app installer yet, use the browser
+    openExternal(v.url);
+    setTimeout(() => { gateProgress(100, 'Finish the install from your downloads.'); gateRetry(); }, 1500);
+    return;
+  }
   gateProgress(0);
   let sub = null;
   try {
     sub = await P.addListener('progress', e => gateProgress(e.percent));
     await P.install({ url: v.url });
     gateProgress(100, 'Tap Install on the next screen.');
-    setTimeout(() => { $('#gateBtns').hidden = false; $('#gateGo').textContent = 'Install again'; }, 4000); // if they backed out
+    setTimeout(() => gateRetry('Didn\'t install? Try again, or keep using this version for now.'), 4000);
   } catch (e) {
-    $('#gatePct').textContent = 'Download failed. Check your internet and try again.';
-    $('#gateBtns').hidden = false;
+    gateRetry('Download failed. Check your internet and try again.');
   } finally {
     if (sub && sub.remove) sub.remove();
   }
@@ -1527,7 +1553,7 @@ $('#paySave').onclick = savePay;
 $('#payFull').onclick = () => { const l = db.loans.find(x => x.id === loanId); if (l) $('#payAmount').value = leftOf(l); };
 $('#lPerson').oninput = renderLoanForm;
 $('#search').oninput = renderHistory;
-$('#fTitle').oninput = renderSuggest;
+$('#fSplit').onchange = () => { form.split = form.split || 2; renderSplit(); };
 
 $('#keypad').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -1540,7 +1566,7 @@ $('#amountBox').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.p
 ['#fTitle', '#fNote', '#fDate'].forEach(s => $(s).addEventListener('focus', () => { if (keypadOpen()) closeKeypad(); }));
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-sugg],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link]');
+  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link]');
   if (!el) return;
   const d = el.dataset;
   if (d.pok) acceptPending(d.pok);
@@ -1570,13 +1596,7 @@ document.addEventListener('click', e => {
   else if (d.pname) { $('#lPerson').value = d.pname; renderLoanForm(); }
   else if (d.addfor) openLoanForm(null, false, d.addfor);
   else if ('budget' in d) { $('#btnSettings').click(); setTimeout(() => $('#budget').focus(), 200); }
-  else if (d.sugg) {
-    const v = renderSuggest.map[d.sugg];
-    $('#fTitle').value = v.title;
-    form.category = v.last.category; form.mode = v.last.mode;
-    renderPickers(); renderSuggest();
-    if (!form.expr) openKeypad(); // heading picked, amount is next
-  }
+  else if (d.split) { form.split = Math.min(20, Math.max(2, (form.split || 2) + Number(d.split))); renderSplit(); }
 });
 
 // Physical keyboard support (laptop testing)
@@ -1593,6 +1613,7 @@ document.addEventListener('keydown', e => {
 $('#btnSettings').onclick = () => {
   $('#budget').value = db.budget || ''; $('#nudge').checked = db.settings.nudge;
   $('#smsOn').checked = db.settings.sms; $('#waText').value = db.settings.waText || WA_DEFAULT;
+  $('#smsSection').hidden = native && !smsPlugin();
   openSheet($('#settings'));
 };
 $('#smsOn').onchange = async e => {
