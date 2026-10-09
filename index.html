@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.4">
-<meta name="pm-notes" content="Bank SMS spends get picked up automatically, and a Dark theme you can turn on in Settings.">
+<meta name="pm-version" content="2.4.1">
+<meta name="pm-notes" content="Cleaner settings, your phone's own keyboard for amounts, and step-by-step help to switch on SMS auto-detect.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -31,7 +31,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);f
 body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 button{font-family:inherit;cursor:pointer;color:inherit}
 button:focus-visible,input:focus-visible{outline:2px solid var(--pm);outline-offset:2px}
-.num,.big,.tile-amt,.amt-sm,.menu-amt,#exprView,.hero .amt{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.num,.big,.tile-amt,.amt-sm,.menu-amt,.hero .amt{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 svg.i{width:20px;height:20px;flex:none;vertical-align:middle}
 
 /* header */
@@ -155,25 +155,17 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .chip small{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
 .chip.on{background:var(--pm);border-color:var(--pm);color:#fff}
 .chip.on small{color:rgba(255,255,255,.85)}
-.amount-box{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:10px 14px;text-align:right;margin:10px 0 8px;cursor:pointer}
-.amount-box.active{border-color:var(--pm)}
-#exprView{font-family:var(--display);font-size:30px;font-weight:700;word-break:break-all;line-height:1.2}
-#resultView{font-size:15px;color:var(--muted);min-height:20px;font-weight:600}
-.amount-box.prompt{text-align:left;border-style:dashed}
-.amount-box.prompt #exprView{font-size:18px;font-weight:600;color:var(--pm);letter-spacing:0}
-.amount-box.prompt #resultView{font-weight:500;font-size:13px}
+.amt-field{position:relative;margin:10px 0 4px}
+.amt-field .rs{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px;font-weight:600;pointer-events:none}
+.amt-field .txt{padding-left:30px;font-variant-numeric:tabular-nums}
+#resultView{font-size:13px;font-weight:600;color:var(--pm);margin:0 2px 4px}
+#resultView[hidden]{display:none}
 .split-row{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600;padding:4px 2px 8px;cursor:pointer;width:max-content}
 .split-row input{width:18px;height:18px;accent-color:var(--pm);margin:0}
 .split-box{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:14px;color:var(--muted);margin:0 0 10px}
 .split-box[hidden]{display:none}
 .split-box .close{width:30px;height:30px;font-size:18px;font-weight:600}
 .split-box b{color:var(--ink);font-variant-numeric:tabular-nums}
-.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;animation:up .15s ease-out}
-.keypad[hidden]{display:none}
-.keypad button{height:50px;border-radius:12px;border:0;background:var(--chip);font-size:20px;font-weight:500;user-select:none}
-.keypad button:active{filter:brightness(.92)}
-.keypad .op{color:var(--pm);font-size:22px}
-.keypad .eq{background:var(--pm);color:#fff;grid-column:span 2}
 .section-title{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.06em}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:6px 0}
 .seg button{padding:11px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -203,6 +195,37 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .switch span::after{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .switch input:checked+span{background:var(--pm)}
 .switch input:checked+span::after{transform:translateX(20px)}
+
+/* settings: a compact list, like the phone's own settings */
+.set-group{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.set-row{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:10px 14px;background:none;border:0;border-bottom:1px solid var(--line);font:inherit;font-size:15px;color:var(--ink);text-align:left}
+.set-row:last-child{border-bottom:0}
+.set-row[hidden]{display:none}
+button.set-row:active{background:var(--chip)}
+.set-row>svg.i,.set-row>span>svg.i{color:var(--muted)}
+.set-row .lbl{flex:1;min-width:0}
+.set-row .val{color:var(--muted);font-size:14px;white-space:nowrap}
+.set-row .chev svg.i{width:16px;height:16px}
+.set-row.danger,.set-row.danger svg.i{color:var(--coral)}
+.info{background:none;border:0;width:28px;height:28px;display:grid;place-items:center;color:var(--muted);margin-left:-6px}
+.info svg.i{width:17px;height:17px}
+.dlg-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.dlg-body{font-size:14.5px;line-height:1.55;color:var(--muted)}
+.dlg-body p{margin:0 0 8px}
+.dlg-body b{color:var(--ink)}
+.opt{display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 4px;background:none;border:0;border-bottom:1px solid var(--line);font:inherit;font-size:15px;color:var(--ink)}
+.opt:last-child{border-bottom:0}
+.opt svg.i{color:var(--pm)}
+
+/* while a form or pop-up is open, the dashboard behind it stays still */
+html.lock,html.lock body{overflow:hidden;overscroll-behavior:none}
+.backdrop{touch-action:none}
+.panel,.ask-box{overscroll-behavior:contain}
+
+/* no selecting / copying app text (like WhatsApp); typing fields still work */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img,svg{-webkit-user-drag:none;user-drag:none}
 
 .ask{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px}
 #gate{z-index:80} /* above the splash: decided before the app shows */
@@ -303,21 +326,14 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   <div class="panel">
     <div class="panel-head"><h2 id="sheetTitle">Add expense</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <input id="fTitle" class="txt" placeholder="Heading, e.g. Lunch, Petrol, Recharge" autocomplete="off" maxlength="60">
-    <div class="amount-box" id="amountBox" role="button" tabindex="0" aria-label="Amount, tap to enter">
-      <div id="exprView">₹0</div><div id="resultView"></div>
-    </div>
+    <!-- Amount: a normal field with the phone's own number keyboard (no in-app keypad) -->
+    <div class="amt-field"><span class="rs">₹</span><input id="fAmount" class="txt" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Amount" autocomplete="off" maxlength="30" aria-label="Amount"></div>
+    <div class="sub" id="resultView" hidden></div>
     <label class="split-row"><input type="checkbox" id="fSplit"> Split this bill</label>
     <div class="split-box" id="splitBox" hidden>
       <span>between</span>
       <button class="close" data-split="-1" aria-label="Fewer people">−</button><b id="splitN">2</b><button class="close" data-split="1" aria-label="More people">+</button>
       <span>people · your share <b id="splitShare">₹0</b></span>
-    </div>
-    <div class="keypad" id="keypad" hidden>
-      <button>7</button><button>8</button><button>9</button><button class="op">÷</button>
-      <button>4</button><button>5</button><button>6</button><button class="op">×</button>
-      <button>1</button><button>2</button><button>3</button><button class="op">-</button>
-      <button>.</button><button>0</button><button>⌫</button><button class="op">+</button>
-      <button>C</button><button>00</button><button class="eq">=</button>
     </div>
     <div class="section-title">Paid via</div>
     <div class="seg" id="fMode"></div>
@@ -408,38 +424,37 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
   <div class="backdrop" data-close></div>
   <div class="panel">
     <div class="panel-head"><h2>Settings</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
-    <div class="section-title">Theme</div>
-    <div class="seg" id="themeSeg"></div>
-    <div class="section-title">Monthly budget (₹)</div>
-    <div class="row2" style="grid-template-columns:1fr auto">
-      <input id="budget" class="txt" type="number" inputmode="decimal" min="0" placeholder="e.g. 20000 (0 = off)">
-      <button class="btn primary" id="btnBudget" style="flex:none;padding:12px 18px">Set</button>
+    <!-- One short line per setting; explanations live behind the ⓘ and open in a pop-up -->
+    <div class="section-title">General</div>
+    <div class="set-group">
+      <button class="set-row" data-set="theme"><span data-ic="moon"></span><span class="lbl">Theme</span><span class="val" id="valTheme"></span><span class="chev" data-ic="right"></span></button>
+      <button class="set-row" data-set="budget"><span data-ic="wallet"></span><span class="lbl">Monthly budget</span><span class="val" id="valBudget"></span><span class="chev" data-ic="right"></span></button>
     </div>
     <div class="section-title">Reminders</div>
-    <div class="switch-row">
-      <div><b>Daily nudge at 9 PM</b><div class="sub">"Quick one: what did today cost you?"</div></div>
-      <label class="switch"><input type="checkbox" id="nudge"><span></span></label>
+    <div class="set-group">
+      <div class="set-row"><span data-ic="bell"></span><span class="lbl">Daily reminder, 9 PM</span><button class="info" data-info="nudge" aria-label="About the daily reminder" data-ic="info"></button><label class="switch"><input type="checkbox" id="nudge" aria-label="Daily reminder"><span></span></label></div>
+      <div class="set-row" id="smsSection"><span data-ic="sparkles"></span><span class="lbl">Auto-detect from SMS</span><button class="info" data-info="sms" aria-label="About SMS auto-detect" data-ic="info"></button><label class="switch"><input type="checkbox" id="smsOn" aria-label="Auto-detect from SMS"><span></span></label></div>
+      <button class="set-row" data-set="wa"><span data-ic="chat"></span><span class="lbl">WhatsApp reminder text</span><span class="chev" data-ic="right"></span></button>
     </div>
-    <div id="smsSection"><!-- shown only when the installed APK can read SMS -->
-    <div class="section-title">Auto-detect spends</div>
-    <div class="switch-row">
-      <div><b>Read bank & UPI SMS</b><div class="sub">When your bank texts "Rs.250 sent to Swiggy", you get a notification within seconds and the spend waits on Home for a one-tap add. Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</div></div>
-      <label class="switch"><input type="checkbox" id="smsOn"><span></span></label>
-    </div>
-    <div class="sub" style="background:var(--pm-soft);border-radius:10px;padding:8px 10px;margin-top:4px">No alert on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? Open phone Settings → Apps → Pocket Money and turn on <b>Autostart</b> (or set Battery to <b>No restrictions</b>).</div>
-    </div>
-    <div class="section-title">Udhaar WhatsApp message</div>
-    <textarea id="waText" class="txt" rows="3" maxlength="300" style="resize:vertical"></textarea>
-    <div class="sub" style="margin-top:4px">Use {name}, {amount} and {date}. You still tap Send in WhatsApp yourself.</div>
     <div class="section-title">Your data</div>
-    <div class="stack" style="margin-top:6px">
-      <button class="btn ghost" id="btnBackup">Download backup</button>
-      <button class="btn ghost" id="btnRestore">Restore from backup</button>
-      <input type="file" id="fileRestore" accept=".json,application/json" hidden>
-      <button class="btn ghost" id="btnIntro">Show the intro again</button>
-      <button class="btn danger" id="btnWipe">Delete all data</button>
+    <div class="set-group">
+      <button class="set-row" id="btnBackup"><span data-ic="download"></span><span class="lbl">Download backup</span><span class="chev" data-ic="right"></span></button>
+      <button class="set-row" id="btnRestore"><span data-ic="upload"></span><span class="lbl">Restore from backup</span><span class="chev" data-ic="right"></span></button>
+      <button class="set-row" id="btnIntro"><span data-ic="restart"></span><span class="lbl">Show the intro again</span><span class="chev" data-ic="right"></span></button>
+      <button class="set-row danger" id="btnWipe"><span data-ic="trash"></span><span class="lbl">Delete all data</span></button>
     </div>
-    <p class="sub" style="margin-top:14px">Pocket Money keeps everything on this phone. Nothing is uploaded. Download a backup now and then so you never lose it.</p>
+    <input type="file" id="fileRestore" accept=".json,application/json" hidden>
+    <button class="link-btn" data-info="privacy" style="margin:2px auto 0;display:flex;color:var(--muted);font-weight:500;font-size:13px"><span data-ic="shield"></span>Your data stays on this phone</button>
+  </div>
+</div>
+
+<!-- Small pop-up for settings choices and the ⓘ explanations -->
+<div id="dlg" class="ask" hidden>
+  <div class="backdrop" id="dlgBg"></div>
+  <div class="ask-box">
+    <div class="dlg-title" id="dlgTitle"></div>
+    <div class="dlg-body" id="dlgBody"></div>
+    <div class="actions" id="dlgActions"></div>
   </div>
 </div>
 
@@ -471,7 +486,7 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 
 <script>
 // Lucide icons (ISC licence, lucide.dev), inner SVG markup only
-const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />"};
+const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />"};
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const KEY = 'kharcha.v1'; // storage key kept from the first version so existing data survives
 const REMOTE = 'https://imshyamalbhatt.github.io/kharcha/';
@@ -781,6 +796,18 @@ function parseSms(body, address) {
   };
 }
 
+// Android 13+ "Restricted settings": an app installed outside the Play Store can't get SMS
+// access until the user allows it once in phone settings, so the permission prompt is refused
+// silently. Walk them through it instead of a vague error.
+function smsBlockedHelp() {
+  const steps = ['Open your phone <b>Settings → Apps → Pocket Money</b>', 'Tap <b>⋮</b> (top right) → <b>Allow restricted settings</b>', 'Tap <b>Permissions → SMS → Allow</b>', 'Come back and turn on <b>Auto-detect from SMS</b>'];
+  dialog({
+    title: 'Allow SMS access',
+    body: `<p>Android protects SMS for apps installed outside the Play Store. Allow it once:</p>
+      <ol style="margin:0;padding-left:20px">${steps.map(s => `<li style="margin:4px 0">${s}</li>`).join('')}</ol>`,
+  });
+}
+
 let scanning = false;
 async function scanSms(quiet) {
   if (!native || !db.settings.sms || scanning) return;
@@ -812,7 +839,7 @@ async function scanSms(quiet) {
     save();
     if (found) { render(); if (!quiet) toast(`Found ${found} spend${found === 1 ? '' : 's'} in your SMS`); }
   } catch (e) {
-    if (e && e.code === 'DENIED') { db.settings.sms = false; save(); toast('SMS permission is needed for auto-detect'); }
+    if (e && e.code === 'DENIED') { db.settings.sms = false; save(); smsBlockedHelp(); }
   } finally { scanning = false; }
 }
 // Automatic mode: SmsReceiver.java notifies within seconds of a bank SMS (even with the app
@@ -1105,7 +1132,7 @@ function openForm(e, swap, preset) {
   $('#fNote').value = e ? e.note : '';
   $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
   $('#btnDelete').style.display = e ? '' : 'none';
-  $('#keypad').hidden = true; // folded until the amount is tapped
+  $('#fAmount').value = form.expr;
   form.split = 2; $('#fSplit').checked = false; // heading starts blank: no suggestions (Shyamal's call)
   renderPickers(); updateAmount();
   if (swap) swapSheet($('#sheet')); else openSheet($('#sheet'));
@@ -1123,60 +1150,23 @@ function renderSplit() {
   const total = round2(calc(form.expr));
   $('#splitShare').textContent = isFinite(total) && total > 0 ? money(round2(total / form.split)) : '₹0';
 }
-// The keypad stays folded away until the amount is tapped; until then a prompt sits there.
-const keypadOpen = () => !$('#keypad').hidden;
-function openKeypad() {
-  if (document.activeElement && document.activeElement.tagName === 'INPUT') document.activeElement.blur(); // hide phone keyboard
-  $('#keypad').hidden = false;
-  updateAmount();
-  setTimeout(() => $('#keypad').scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 30);
-}
-function closeKeypad() { $('#keypad').hidden = true; updateAmount(); }
+// Amount field: typed with the phone's keyboard. Sums still work if typed ("120+45" shows "= ₹165").
+const cleanAmount = v => String(v || '').replace(/[,\s₹]/g, '').replace(/\*/g, '×').replace(/\//g, '÷');
 function updateAmount() {
-  const s = form.expr, box = $('#amountBox');
-  const prompt = !s && !keypadOpen();
-  box.classList.toggle('prompt', prompt);
-  box.classList.toggle('active', keypadOpen());
-  if (prompt) {
-    $('#exprView').textContent = 'Tap to enter amount';
-    $('#resultView').textContent = '';
-    renderSplit();
-    return;
-  }
-  $('#exprView').textContent = '₹' + (s || '0');
-  if (/[+\-×÷]/.test(s)) {
-    const v = calc(s);
-    $('#resultView').textContent = isFinite(v) ? '= ' + money(round2(v)) : '= ?';
-  } else $('#resultView').textContent = '';
+  form.expr = cleanAmount($('#fAmount').value);
+  const r = $('#resultView');
+  if (/\d[+\-×÷]\d/.test(form.expr)) {
+    const v = calc(form.expr);
+    r.textContent = isFinite(v) ? '= ' + money(round2(v)) : '';
+    r.hidden = !r.textContent;
+  } else r.hidden = true;
   renderSplit();
-}
-function press(k) {
-  let s = form.expr;
-  const last = s.slice(-1);
-  const seg = s.split(/[+\-×÷]/).pop();
-  if (k === 'C') s = '';
-  else if (k === '⌫') s = s.slice(0, -1);
-  else if (k === '=') { const v = calc(s); if (isFinite(v)) s = String(round2(v)); }
-  else if (OPS.includes(k)) {
-    if (!s) return;
-    if (OPS.includes(last) || last === '.') s = s.slice(0, -1) + k; else s += k;
-  }
-  else if (k === '.') { if (!seg.includes('.')) s += seg === '' ? '0.' : '.'; }
-  else {
-    if (seg.includes('.') && seg.split('.')[1].length + k.length > 2) return;
-    if (seg === '0') s = s.slice(0, -1) + (k === '00' ? '0' : k);
-    else if (seg === '' && k === '00') s += '0';
-    else s += k;
-  }
-  if (s.length > 40) return;
-  form.expr = s;
-  updateAmount();
 }
 function saveForm() {
   const title = $('#fTitle').value.trim();
   const total = round2(calc(form.expr));
   if (!title) { toast('Add a heading'); $('#fTitle').focus(); return; }
-  if (!isFinite(total) || total <= 0) { toast('Enter an amount'); openKeypad(); return; }
+  if (!isFinite(total) || total <= 0) { toast('Enter an amount'); $('#fAmount').focus(); return; }
   const split = $('#fSplit').checked ? form.split : 1;
   const amount = round2(total / split); // split bill: only your share counts as your spend
   const old = form.id && db.expenses.find(x => x.id === form.id);
@@ -1557,18 +1547,10 @@ $('#lPerson').oninput = renderLoanForm;
 $('#search').oninput = renderHistory;
 $('#fSplit').onchange = () => { form.split = form.split || 2; renderSplit(); };
 
-$('#keypad').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (document.activeElement && document.activeElement.tagName === 'INPUT') document.activeElement.blur(); // hide phone keyboard
-  press(b.textContent);
-});
-$('#amountBox').onclick = () => keypadOpen() ? null : openKeypad();
-$('#amountBox').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openKeypad(); } };
-// typing a heading, note or date folds the keypad away so only one keyboard shows
-['#fTitle', '#fNote', '#fDate'].forEach(s => $(s).addEventListener('focus', () => { if (keypadOpen()) closeKeypad(); }));
+$('#fAmount').oninput = updateAmount;
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link]');
+  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link],[data-set],[data-info]');
   if (!el) return;
   const d = el.dataset;
   if (d.pok) acceptPending(d.pok);
@@ -1584,7 +1566,6 @@ document.addEventListener('click', e => {
     else if (d.seg === 'lType') { lf.type = d.val; renderLoanForm(); }
     else if (d.seg === 'lMode') { lf.mode = d.val; renderLoanForm(); }
     else if (d.seg === 'pMode') { payMode = d.val; $('#pMode').innerHTML = segHTML('pMode', modeOptions, payMode); }
-    else if (d.seg === 'theme') { db.settings.theme = d.val; save(); applyTheme(); renderThemeSeg(); }
   }
   else if (d.cat) { form.category = d.cat; renderPickers(); }
   else if (d.hmode) { histMode = d.hmode; renderHistory(); }
@@ -1598,27 +1579,90 @@ document.addEventListener('click', e => {
   else if (d.remind !== undefined) { lf.remind = d.remind; renderLoanForm(); }
   else if (d.pname) { $('#lPerson').value = d.pname; renderLoanForm(); }
   else if (d.addfor) openLoanForm(null, false, d.addfor);
-  else if ('budget' in d) { $('#btnSettings').click(); setTimeout(() => $('#budget').focus(), 200); }
+  else if ('budget' in d) openSetting('budget');
+  else if (d.set) openSetting(d.set);
+  else if (d.info) dialog({ title: INFO[d.info][0], body: INFO[d.info][1] });
   else if (d.split) { form.split = Math.min(20, Math.max(2, (form.split || 2) + Number(d.split))); renderSplit(); }
 });
 
-// Physical keyboard support (laptop testing)
+// Enter / Done on the keyboard saves; Escape closes (laptop)
 document.addEventListener('keydown', e => {
   if ($('#sheet').classList.contains('hidden')) return;
   if (e.key === 'Escape') return closeSheets();
-  if (e.target.tagName === 'INPUT') { if (e.key === 'Enter') saveForm(); return; }
-  const map = { '*': '×', '/': '÷', 'Backspace': '⌫', 'Delete': 'C' };
-  const k = map[e.key] || e.key;
-  if (/^[0-9.+\-×÷⌫C]$/.test(k)) { e.preventDefault(); if (!keypadOpen()) openKeypad(); press(k); }
-  else if (e.key === 'Enter') saveForm();
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); saveForm(); }
 });
 
+const THEMES = [['system', 'System default'], ['light', 'Light'], ['dark', 'Dark']];
+function settingValues() {
+  $('#valTheme').textContent = (THEMES.find(t => t[0] === (db.settings.theme || 'system')) || THEMES[0])[1];
+  $('#valBudget').textContent = db.budget > 0 ? money(db.budget) : 'Off';
+}
 $('#btnSettings').onclick = () => {
-  $('#budget').value = db.budget || ''; $('#nudge').checked = db.settings.nudge;
-  $('#smsOn').checked = db.settings.sms; $('#waText').value = db.settings.waText || WA_DEFAULT;
+  settingValues();
+  $('#nudge').checked = db.settings.nudge;
+  $('#smsOn').checked = db.settings.sms;
   $('#smsSection').hidden = native && !smsPlugin();
   openSheet($('#settings'));
 };
+
+// Small pop-up: dialog({ title, body (html), actions: [{ label, kind, fn }] }); fn returning false keeps it open
+function dialog({ title, body = '', actions = [{ label: 'OK' }] }) {
+  $('#dlgTitle').textContent = title;
+  $('#dlgBody').innerHTML = body;
+  $('#dlgActions').innerHTML = actions.map((a, i) => `<button class="btn ${a.kind || 'primary'}" data-dlg="${i}">${a.label}</button>`).join('');
+  $('#dlgActions').hidden = !actions.length;
+  $('#dlg').hidden = false;
+  const close = () => { $('#dlg').hidden = true; };
+  $('#dlgActions').onclick = e => {
+    const b = e.target.closest('[data-dlg]'); if (!b) return;
+    const a = actions[Number(b.dataset.dlg)];
+    if (a.fn && a.fn() === false) return;
+    close();
+  };
+  $('#dlgBg').onclick = close;
+  return close;
+}
+window.addEventListener('popstate', () => { $('#dlg').hidden = true; });
+
+const INFO = {
+  nudge: ['Daily reminder', '<p>Every evening at <b>9 PM</b> you get a gentle nudge to log the day\'s spends.</p><p>Turn it off here anytime.</p>'],
+  sms: ['Auto-detect from SMS', '<p>When your bank texts a debit like <b>"Rs.250 sent to Swiggy"</b>, you get an alert within seconds and the spend waits on Home for a one-tap add.</p><p>Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</p><p>No alerts on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? In phone Settings → Apps → Pocket Money, turn on <b>Autostart</b>.</p>'],
+  privacy: ['Your data stays here', '<p>Pocket Money keeps everything <b>on this phone</b>. Nothing is uploaded.</p><p>Download a backup now and then, so a lost or reset phone doesn\'t mean lost records.</p>'],
+};
+function openSetting(which) {
+  if (which === 'theme') {
+    const cur = db.settings.theme || 'system';
+    const close = dialog({
+      title: 'Theme', actions: [],
+      body: THEMES.map(([v, l]) => `<button class="opt" data-theme-opt="${v}">${l}${v === cur ? icon('check') : ''}</button>`).join(''),
+    });
+    $('#dlgBody').onclick = e => {
+      const b = e.target.closest('[data-theme-opt]'); if (!b) return;
+      db.settings.theme = b.dataset.themeOpt; save(); applyTheme(); settingValues(); close();
+    };
+  } else if (which === 'budget') {
+    dialog({
+      title: 'Monthly budget',
+      body: '<input id="budget" class="txt" type="number" inputmode="decimal" min="0" placeholder="e.g. 20000"><p style="margin:8px 0 0">Leave empty or 0 to turn it off.</p>',
+      actions: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Save', fn: () => {
+        db.budget = Math.max(0, round2(Number($('#budget').value) || 0));
+        save(); render(); settingValues();
+        toast(db.budget ? `Budget set to ${money(db.budget)}` : 'Budget turned off');
+      } }],
+    });
+    $('#budget').value = db.budget || '';
+    setTimeout(() => $('#budget').focus(), 100);
+  } else if (which === 'wa') {
+    dialog({
+      title: 'WhatsApp reminder text',
+      body: '<textarea id="waText" class="txt" rows="3" maxlength="300" style="resize:none"></textarea><p style="margin:8px 0 0">{name}, {amount} and {date} are filled in for you.</p>',
+      actions: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Save', fn: () => {
+        db.settings.waText = $('#waText').value.trim() || WA_DEFAULT; save(); syncNotifications(); toast('Message saved');
+      } }],
+    });
+    $('#waText').value = db.settings.waText || WA_DEFAULT;
+  }
+}
 $('#smsOn').onchange = async e => {
   const P = smsPlugin();
   if (!e.target.checked) { db.settings.sms = false; save(); if (P) P.setAutoDetect({ enabled: false }).catch(() => {}); toast('SMS auto-detect off'); return; }
@@ -1630,11 +1674,6 @@ $('#smsOn').onchange = async e => {
   P.setAutoDetect({ enabled: db.settings.sms }).catch(() => {});
   if (db.settings.sms) notifAllowed().catch(() => {}); // the instant "₹250 spent" alerts need notifications
   if (db.settings.sms && !db.pending.length) toast('Auto-detect on. Your next UPI payment will pop up within seconds.');
-};
-$('#waText').onchange = e => { db.settings.waText = e.target.value.trim() || WA_DEFAULT; save(); syncNotifications(); toast('WhatsApp message saved'); };
-$('#btnBudget').onclick = () => {
-  db.budget = Math.max(0, round2(Number($('#budget').value) || 0));
-  save(); closeSheets(); render(); toast(db.budget ? `Budget set to ${money(db.budget)}` : 'Budget turned off');
 };
 $('#nudge').onchange = e => {
   db.settings.nudge = e.target.checked; save(); syncNotifications();
@@ -1658,11 +1697,22 @@ function applyTheme() {
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
   else delete document.documentElement.dataset.theme;
 }
-function renderThemeSeg() {
-  $('#themeSeg').innerHTML = segHTML('theme', [['system', 'System default'], ['light', 'Light'], ['dark', 'Dark']], db.settings.theme || 'system');
-}
 applyTheme();
-renderThemeSeg();
+
+// No long-press menu or copying of app text (CSS already stops selection); typing fields keep both.
+const inField = el => !!(el && el.closest && el.closest('input,textarea'));
+document.addEventListener('contextmenu', e => { if (!inField(e.target)) e.preventDefault(); });
+document.addEventListener('copy', e => { if (!inField(document.activeElement)) e.preventDefault(); });
+document.addEventListener('dragstart', e => { if (!inField(e.target)) e.preventDefault(); });
+
+// Lock the page behind any open form, pop-up or full-screen overlay so it can't scroll.
+function syncScrollLock() {
+  if (!document || !document.documentElement) return; // page closing
+  const open = !!document.querySelector('.sheet:not(.hidden)') ||
+    ['#dlg', '#ask', '#gate', '#onb', '#splash'].some(s => $(s) && !$(s).hidden);
+  document.documentElement.classList.toggle('lock', open);
+}
+new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
 
 $('#demoBar').hidden = !demo;
 document.querySelectorAll('[data-ic]').forEach(el => { el.innerHTML = icon(el.dataset.ic); }); // static Lucide icons
@@ -1710,6 +1760,7 @@ document.addEventListener('visibilitychange', () => {
 checkApk(); // straight away, so the update gate covers the splash before the app shows
 splash(() => {
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
+  if (/[?&]open=settings/.test(location.search)) $('#btnSettings').click();
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();
