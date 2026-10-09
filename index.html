@@ -154,6 +154,11 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .chip svg.i{width:16px;height:16px}
 .chip small{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
 .chip.on{background:var(--pm);border-color:var(--pm);color:#fff}
+.pchip{padding:0 4px 0 0;gap:0}
+.pchip button{background:none;border:0;font:inherit;color:inherit}
+.pchip button[data-pname]{padding:7px 4px 7px 12px}
+.pchip .chip-x{width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--muted)}
+.pchip .chip-x svg.i{width:14px;height:14px}
 .chip.on small{color:rgba(255,255,255,.85)}
 .amt-field{position:relative;margin:10px 0 4px}
 .amt-field .rs{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px;font-weight:600;pointer-events:none}
@@ -378,7 +383,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
     <input id="lPerson" class="txt" placeholder="Name, e.g. Rahul" autocomplete="off" maxlength="40">
     <div id="lPeople" class="chips scroll"></div>
     <div class="section-title">Amount</div>
-    <input id="lAmount" class="txt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="₹ amount" style="font-size:22px;font-weight:700">
+    <div class="amt-field"><span class="rs">₹</span><input id="lAmount" class="txt" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Amount" autocomplete="off" maxlength="30" aria-label="Amount"></div>
     <div class="section-title">Paid via</div>
     <div class="seg" id="lMode"></div>
     <div class="section-title">Remind me</div>
@@ -412,7 +417,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
   <div class="panel">
     <div class="panel-head"><h2 id="payTitle">Money back</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <div class="sub" id="payLeft"></div>
-    <input id="payAmount" class="txt" type="number" inputmode="decimal" min="0" step="0.01" style="margin-top:10px;font-size:22px;font-weight:700">
+    <div class="amt-field"><span class="rs">₹</span><input id="payAmount" class="txt" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Amount" autocomplete="off" maxlength="30" aria-label="Amount"></div>
     <div class="chips"><button class="chip" id="payFull"></button></div>
     <div class="seg" id="pMode"></div>
     <div class="actions"><button class="btn good" id="paySave">Save</button></div>
@@ -555,7 +560,7 @@ function load() {
   if (!d || !Array.isArray(d.expenses)) d = { expenses: [] };
   // pending: spends found in SMS waiting for review · smsSeen: dedupe keys of SMS already handled
   // contacts: udhaar person -> linked WhatsApp contact · payeeCats/payeeTitles: what the user taught us per payee
-  d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, ...d };
+  d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, hiddenNames: [], ...d };
   d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', ...(d.settings || {}) };
   if (d.onboarded === undefined) d.onboarded = d.expenses.length > 0; // existing users skip the intro
   return d;
@@ -1220,13 +1225,19 @@ function renderLoanForm() {
   $('#lRemind').innerHTML = REMIND.map(([v, t]) => `<button class="chip ${lf.remind === v ? 'on' : ''}" data-remind="${v}">${t}</button>`).join('');
   $('#lRemindDate').hidden = lf.remind !== 'pick';
   const q = personKey($('#lPerson').value);
-  const names = people().filter(p => !q || (p.key.includes(q) && p.key !== q)).slice(0, 8);
-  $('#lPeople').innerHTML = names.map(p => `<button class="chip" data-pname="${esc(p.name)}">${esc(p.name)}</button>`).join('');
+  const names = people().filter(p => !db.hiddenNames.includes(p.key) && (!q || (p.key.includes(q) && p.key !== q))).slice(0, 8);
+  $('#lPeople').innerHTML = names.map(p => `<span class="chip pchip"><button data-pname="${esc(p.name)}">${esc(p.name)}</button><button class="chip-x" data-pdel="${esc(p.key)}" aria-label="Remove ${esc(p.name)} from suggestions">${icon('x')}</button></span>`).join('');
   $('#lPeople').style.display = names.length ? '' : 'none';
+}
+// ✕ on a friend-name suggestion: hide it from suggestions (their udhaar entries stay)
+function hideSuggestion(key) {
+  if (!db.hiddenNames.includes(key)) db.hiddenNames.push(key);
+  save(); renderLoanForm();
+  toast('Removed from suggestions', { label: 'Undo', fn: () => { db.hiddenNames = db.hiddenNames.filter(k => k !== key); save(); renderLoanForm(); } });
 }
 function saveLoan() {
   const person = $('#lPerson').value.trim();
-  const amount = round2(Number($('#lAmount').value));
+  const amount = round2(calc(cleanAmount($('#lAmount').value)));
   if (!person) { toast("Add your friend's name"); $('#lPerson').focus(); return; }
   if (!(amount > 0)) { toast('Enter an amount'); $('#lAmount').focus(); return; }
   const remindOn = lf.remind === 'pick' ? $('#lRemindDate').value : lf.remind ? addDays(Number(lf.remind)) : '';
@@ -1237,6 +1248,7 @@ function saveLoan() {
     createdAt: old ? old.createdAt : Date.now(),
   };
   if (old) db.loans[db.loans.indexOf(old)] = rec; else db.loans.push(rec);
+  db.hiddenNames = db.hiddenNames.filter(k => k !== personKey(person)); // used again: suggest again
   save(); closeSheets();
   tab = 'udhaar'; openPerson = personKey(person); render();
   syncNotifications();
@@ -1284,7 +1296,7 @@ function openPay(l) {
 function savePay() {
   const l = db.loans.find(x => x.id === loanId);
   if (!l) return;
-  const amt = Math.min(round2(Number($('#payAmount').value)), leftOf(l));
+  const amt = Math.min(round2(calc(cleanAmount($('#payAmount').value))), leftOf(l));
   if (!(amt > 0)) { toast('Enter an amount'); return; }
   l.payments.push({ id: uid(), amount: amt, date: today(), mode: payMode });
   save(); closeSheets(); render(); syncNotifications();
@@ -1550,7 +1562,7 @@ $('#fSplit').onchange = () => { form.split = form.split || 2; renderSplit(); };
 $('#fAmount').oninput = updateAmount;
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link],[data-set],[data-info]');
+  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link],[data-set],[data-info],[data-pdel]');
   if (!el) return;
   const d = el.dataset;
   if (d.pok) acceptPending(d.pok);
@@ -1578,6 +1590,7 @@ document.addEventListener('click', e => {
   else if (d.lact) loanAction(d.lact);
   else if (d.remind !== undefined) { lf.remind = d.remind; renderLoanForm(); }
   else if (d.pname) { $('#lPerson').value = d.pname; renderLoanForm(); }
+  else if (d.pdel) hideSuggestion(d.pdel);
   else if (d.addfor) openLoanForm(null, false, d.addfor);
   else if ('budget' in d) openSetting('budget');
   else if (d.set) openSetting(d.set);
@@ -1761,6 +1774,7 @@ checkApk(); // straight away, so the update gate covers the splash before the ap
 splash(() => {
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
   if (/[?&]open=settings/.test(location.search)) $('#btnSettings').click();
+  if (/[?&]open=loan/.test(location.search)) openLoanForm(null);
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();
