@@ -17,6 +17,7 @@ Copy-Item "$repo\assets" "$cap\www\assets" -Recurse
 # native code (in-app updater plugin + its registration) is kept in the repo
 Copy-Item "$repo\android\native\*.java" "$cap\android\app\src\main\java\com\shyamal\kharcha\" -Force
 Copy-Item "$repo\android\native\AndroidManifest.xml" "$cap\android\app\src\main\AndroidManifest.xml" -Force
+Copy-Item "$repo\android\native\app.build.gradle" "$cap\android\app\build.gradle" -Force # versionCode/versionName + extra dependencies
 
 $env:JAVA_HOME = "$b\jdk-21.0.12.1+1"; $env:ANDROID_HOME = "$b\sdk"; $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 Push-Location $cap; npx cap sync android; Pop-Location

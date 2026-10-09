@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.4.1">
-<meta name="pm-notes" content="Cleaner settings, your phone's own keyboard for amounts, and step-by-step help to switch on SMS auto-detect.">
+<meta name="pm-version" content="2.5">
+<meta name="pm-notes" content="Back up to your own Google Drive, and restore it after a reinstall or on a new phone.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -209,6 +209,9 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 button.set-row:active{background:var(--chip)}
 .set-row>svg.i,.set-row>span>svg.i{color:var(--muted)}
 .set-row .lbl{flex:1;min-width:0}
+.set-row .sub2{display:block;font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-row .sub2.err{color:var(--coral)}
+#onbRestore[hidden]{display:none!important}
 .set-row .val{color:var(--muted);font-size:14px;white-space:nowrap}
 .set-row .chev svg.i{width:16px;height:16px}
 .set-row.danger,.set-row.danger svg.i{color:var(--coral)}
@@ -289,6 +292,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
   <button class="onb-skip" id="onbSkip">Skip</button>
   <div class="onb-body" id="onbBody"></div>
   <div class="onb-foot"><div class="dots" id="onbDots"></div><button class="btn primary" id="onbNext">Next</button></div>
+  <button class="link-btn" id="onbRestore" hidden style="margin:14px auto 0;display:flex"><span data-ic="clouddown"></span>Have a backup? Restore from Google Drive</button>
 </div>
 
 <header class="top">
@@ -443,8 +447,12 @@ img,svg{-webkit-user-drag:none;user-drag:none}
     </div>
     <div class="section-title">Your data</div>
     <div class="set-group">
-      <button class="set-row" id="btnBackup"><span data-ic="download"></span><span class="lbl">Download backup</span><span class="chev" data-ic="right"></span></button>
-      <button class="set-row" id="btnRestore"><span data-ic="upload"></span><span class="lbl">Restore from backup</span><span class="chev" data-ic="right"></span></button>
+      <div class="set-row"><span data-ic="cloud"></span><span class="lbl">Google Drive backup<small class="sub2" id="gdSub">Off</small></span><button class="info" data-info="gdrive" aria-label="About Google Drive backup" data-ic="info"></button><label class="switch"><input type="checkbox" id="gdOn" aria-label="Google Drive backup"><span></span></label></div>
+      <button class="set-row" id="btnGdRestore"><span data-ic="clouddown"></span><span class="lbl">Restore from Google Drive</span><span class="chev" data-ic="right"></span></button>
+    </div>
+    <div class="set-group" style="margin-top:10px">
+      <button class="set-row" id="btnBackup"><span data-ic="download"></span><span class="lbl">Download backup file</span><span class="chev" data-ic="right"></span></button>
+      <button class="set-row" id="btnRestore"><span data-ic="upload"></span><span class="lbl">Restore from a file</span><span class="chev" data-ic="right"></span></button>
       <button class="set-row" id="btnIntro"><span data-ic="restart"></span><span class="lbl">Show the intro again</span><span class="chev" data-ic="right"></span></button>
       <button class="set-row danger" id="btnWipe"><span data-ic="trash"></span><span class="lbl">Delete all data</span></button>
     </div>
@@ -491,7 +499,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 
 <script>
 // Lucide icons (ISC licence, lucide.dev), inner SVG markup only
-const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />"};
+const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />"};
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const KEY = 'kharcha.v1'; // storage key kept from the first version so existing data survives
 const REMOTE = 'https://imshyamalbhatt.github.io/kharcha/';
@@ -557,15 +565,25 @@ let db = load();
 function load() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  return normalizeDb(d);
+}
+function normalizeDb(d) {
   if (!d || !Array.isArray(d.expenses)) d = { expenses: [] };
   // pending: spends found in SMS waiting for review · smsSeen: dedupe keys of SMS already handled
   // contacts: udhaar person -> linked WhatsApp contact · payeeCats/payeeTitles: what the user taught us per payee
   d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, hiddenNames: [], ...d };
-  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', ...(d.settings || {}) };
+  // gdOn/gdEmail/gdFileId/gdLast/gdError: backup to the user's own Google Drive app folder
+  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', gdOn: false, ...(d.settings || {}) };
   if (d.onboarded === undefined) d.onboarded = d.expenses.length > 0; // existing users skip the intro
   return d;
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
+function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
+// Every change is saved on the phone at once and, with Google Drive backup on, copied there a few seconds later.
+var gdTimer; // var: save() can run before this line during start-up
+function save() {
+  saveLocal();
+  if (db.settings && db.settings.gdOn) { clearTimeout(gdTimer); gdTimer = setTimeout(() => gdBackup(false).catch(() => {}), 6000); }
+}
 
 if (demo && !fresh && !db.demoSeeded && !db.expenses.length) {
   db.expenses = sampleData(); db.loans = sampleLoans(); db.budget = 20000; db.demoSeeded = true; db.onboarded = true;
@@ -1478,30 +1496,130 @@ function exportCsv() {
     .concat([...db.expenses].sort(byNewest).map(e => [e.date, e.title, e.amount, e.mode, e.category, e.note]));
   download(`pocket-money-${today()}.csv`, '﻿' + rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv');
 }
+// Bring a backup in. Empty phone (fresh install): take the whole backup, settings included.
+// Phone with data: add only the expenses / udhaar entries it doesn't have yet. Returns items added.
+function applyBackup(d) {
+  const list = Array.isArray(d) ? d : d && d.expenses;
+  if (!Array.isArray(list)) throw new Error('not a backup');
+  if (!db.expenses.length && !db.loans.length && !Array.isArray(d)) {
+    const keep = { gdOn: db.settings.gdOn, gdEmail: db.settings.gdEmail, gdFileId: db.settings.gdFileId, gdLast: db.settings.gdLast };
+    db = normalizeDb(JSON.parse(JSON.stringify(d)));
+    db.onboarded = true;
+    Object.assign(db.settings, keep);
+    return db.expenses.length + db.loans.length;
+  }
+  const ids = new Set(db.expenses.map(e => e.id)), lids = new Set(db.loans.map(l => l.id));
+  let added = 0;
+  list.forEach(e => {
+    if (e && e.id && e.title && e.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && !ids.has(e.id)) {
+      db.expenses.push({ note: '', category: 'Other', mode: 'Cash', createdAt: Date.now(), ...e, amount: Number(e.amount) });
+      added++;
+    }
+  });
+  (Array.isArray(d.loans) ? d.loans : []).forEach(l => {
+    if (l && l.id && l.person && l.amount > 0 && !lids.has(l.id)) { db.loans.push({ payments: [], note: '', remindOn: '', writtenOff: false, ...l }); added++; }
+  });
+  if (!db.budget && d.budget) db.budget = d.budget;
+  Object.keys(d.contacts || {}).forEach(k => { if (!db.contacts[k]) db.contacts[k] = d.contacts[k]; });
+  return added;
+}
 function restore(file) {
   const r = new FileReader();
   r.onload = () => {
     try {
-      const d = JSON.parse(r.result);
-      const list = Array.isArray(d) ? d : d.expenses;
-      if (!Array.isArray(list)) throw 0;
-      const ids = new Set(db.expenses.map(e => e.id)), lids = new Set(db.loans.map(l => l.id));
-      let added = 0;
-      list.forEach(e => {
-        if (e && e.id && e.title && e.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && !ids.has(e.id)) {
-          db.expenses.push({ note: '', category: 'Other', mode: 'Cash', createdAt: Date.now(), ...e, amount: Number(e.amount) });
-          added++;
-        }
-      });
-      (Array.isArray(d.loans) ? d.loans : []).forEach(l => {
-        if (l && l.id && l.person && l.amount > 0 && !lids.has(l.id)) { db.loans.push({ payments: [], note: '', remindOn: '', writtenOff: false, ...l }); added++; }
-      });
-      if (!db.budget && d.budget) db.budget = d.budget;
-      save(); closeSheets(); render(); syncNotifications();
+      const added = applyBackup(JSON.parse(r.result));
+      save(); closeSheets(); applyTheme(); render(); syncNotifications();
       toast(`Restored ${added} item${added === 1 ? '' : 's'}`);
     } catch (e) { toast('That file is not a Pocket Money backup'); }
   };
   r.readAsText(file);
+}
+
+// ---------- Google Drive backup: the user's own Drive, hidden app folder ----------
+// GoogleDrive.java hands over a short-lived token for the app folder only; files go via Drive REST.
+const GD_FILE = 'pocket-money-backup.json';
+const GD_API = 'https://www.googleapis.com';
+const gdPlugin = () => native && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('GoogleDrive') ? Capacitor.Plugins.GoogleDrive : null;
+let gdToken = null, gdTokenAt = 0, gdBusy = false;
+async function gdAuth(interactive) {
+  if (gdToken && Date.now() - gdTokenAt < 45 * 60e3) return gdToken; // tokens last an hour
+  const P = gdPlugin();
+  if (!P) throw Object.assign(new Error('Update the app to use Google Drive backup'), { code: 'NO_PLUGIN' });
+  const r = await P.authorize({ interactive: !!interactive });
+  gdToken = r.accessToken; gdTokenAt = Date.now();
+  if (r.email) db.settings.gdEmail = r.email;
+  return gdToken;
+}
+async function gdFetch(path, opts = {}, interactive = false) {
+  const call = async () => fetch(GD_API + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + await gdAuth(interactive) } });
+  let res = await call();
+  if (res.status === 401) { gdToken = null; res = await call(); } // expired token: get a fresh one once
+  if (!res.ok) throw Object.assign(new Error('Google Drive error ' + res.status), { status: res.status });
+  return res;
+}
+async function gdFind(interactive) {
+  const q = encodeURIComponent(`name='${GD_FILE}'`);
+  const r = await gdFetch(`/drive/v3/files?spaces=appDataFolder&q=${q}&orderBy=modifiedTime%20desc&fields=files(id,modifiedTime)`, {}, interactive);
+  return ((await r.json()).files || [])[0] || null;
+}
+async function gdBackup(interactive) {
+  if (gdBusy) return false;
+  gdBusy = true;
+  try {
+    const body = JSON.stringify({ app: 'pocket-money', savedAt: new Date().toISOString(), data: db });
+    let id = db.settings.gdFileId || ((await gdFind(interactive)) || {}).id;
+    if (id) {
+      try { await gdFetch(`/upload/drive/v3/files/${id}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body }, interactive); }
+      catch (e) { if (e.status === 404) id = null; else throw e; } // file deleted in Drive: make a new one
+    }
+    if (!id) {
+      const b = 'pm' + Date.now();
+      const parts = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: GD_FILE, parents: ['appDataFolder'] })}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
+      const r = await gdFetch('/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body: parts }, interactive);
+      id = (await r.json()).id;
+    }
+    Object.assign(db.settings, { gdFileId: id, gdLast: Date.now(), gdError: '' });
+    saveLocal(); gdRenderRow();
+    return true;
+  } catch (e) {
+    db.settings.gdError = gdErrorText(e); saveLocal(); gdRenderRow();
+    throw e;
+  } finally { gdBusy = false; }
+}
+async function gdRestore() {
+  const f = await gdFind(true);
+  if (!f) { toast('No Pocket Money backup in this Google account yet'); return false; }
+  const j = await (await gdFetch(`/drive/v3/files/${f.id}?alt=media`, {}, true)).json();
+  const added = applyBackup(j && j.data ? j.data : j);
+  db.settings.gdFileId = f.id;
+  save(); closeSheets(); applyTheme(); render(); syncNotifications(); gdRenderRow();
+  toast(`Restored ${added} item${added === 1 ? '' : 's'} from Google Drive`);
+  return true;
+}
+function gdErrorText(e) {
+  if (e && e.code === 'NOT_SET_UP') return 'Google setup not finished';
+  if (e && e.code === 'NEEDS_CONSENT') return 'Tap to sign in to Google again';
+  if (e && e.code === 'NO_PLUGIN') return 'Update the app to use this';
+  return 'Last backup failed. Will retry.';
+}
+function gdShowError(e) {
+  if (e && e.code === 'CANCELLED') return toast('Google sign-in cancelled');
+  if (e && e.code === 'NOT_SET_UP') return dialog({ title: 'Google setup not finished', body: '<p>Google doesn\'t recognise Pocket Money yet. The one-time Google Cloud setup needs to be completed (or its fingerprint doesn\'t match).</p>' });
+  toast(gdErrorText(e));
+}
+const ago = t => {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const d = new Date(t);
+  return ymd(d) === today() ? `today ${d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : shortDate(ymd(d));
+};
+function gdRenderRow() {
+  const s = db.settings, el = $('#gdSub');
+  if (!el) return;
+  $('#gdOn').checked = !!s.gdOn;
+  el.classList.toggle('err', !!(s.gdOn && s.gdError));
+  el.textContent = !s.gdOn ? 'Off' : s.gdError ? s.gdError : [s.gdEmail, s.gdLast ? `backed up ${ago(s.gdLast)}` : 'backing up…'].filter(Boolean).join(' · ');
 }
 
 let toastTimer;
@@ -1538,6 +1656,7 @@ function showOnb() {
   $('#onbDots').innerHTML = [1, 2, 3].map(i => `<i class="${i === onbStep ? 'on' : ''}"></i>`).join('');
   $('#onbNext').textContent = s.btn;
   $('#onbSkip').hidden = !s.skip;
+  $('#onbRestore').hidden = !(onbStep === 1 && gdPlugin()); // reinstall: bring data back from Google Drive
   $('#onb').hidden = false;
 }
 function endOnb() { onbStep = 0; $('#onb').hidden = true; db.onboarded = true; save(); render(); syncNotifications(); }
@@ -1615,6 +1734,7 @@ $('#btnSettings').onclick = () => {
   $('#nudge').checked = db.settings.nudge;
   $('#smsOn').checked = db.settings.sms;
   $('#smsSection').hidden = native && !smsPlugin();
+  gdRenderRow();
   openSheet($('#settings'));
 };
 
@@ -1640,7 +1760,8 @@ window.addEventListener('popstate', () => { $('#dlg').hidden = true; });
 const INFO = {
   nudge: ['Daily reminder', '<p>Every evening at <b>9 PM</b> you get a gentle nudge to log the day\'s spends.</p><p>Turn it off here anytime.</p>'],
   sms: ['Auto-detect from SMS', '<p>When your bank texts a debit like <b>"Rs.250 sent to Swiggy"</b>, you get an alert within seconds and the spend waits on Home for a one-tap add.</p><p>Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</p><p>No alerts on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? In phone Settings → Apps → Pocket Money, turn on <b>Autostart</b>.</p>'],
-  privacy: ['Your data stays here', '<p>Pocket Money keeps everything <b>on this phone</b>. Nothing is uploaded.</p><p>Download a backup now and then, so a lost or reset phone doesn\'t mean lost records.</p>'],
+  privacy: ['Your data stays yours', '<p>Pocket Money keeps everything <b>on this phone</b>. With Google Drive backup on, a copy also goes to <b>your own</b> Google Drive. No one else gets it.</p>'],
+  gdrive: ['Google Drive backup', '<p>A copy of your data is saved in a <b>hidden Pocket Money folder in your own Google Drive</b>, a few seconds after every change.</p><p>Pocket Money can only see that folder: not your files, Gmail or contacts.</p><p>New phone or reinstalled the app? Choose <b>Restore from Google Drive</b>.</p>'],
 };
 function openSetting(which) {
   if (which === 'theme') {
@@ -1696,6 +1817,35 @@ $('#btnIntro').onclick = () => { closeSheets(); onbStep = 1; showOnb(); };
 $('#btnCsv').onclick = exportCsv;
 $('#btnBackup').onclick = () => download(`pocket-money-backup-${today()}.json`, JSON.stringify(db, null, 1), 'application/json');
 $('#btnRestore').onclick = () => $('#fileRestore').click();
+$('#gdOn').onchange = async e => {
+  if (!e.target.checked) { db.settings.gdOn = false; saveLocal(); gdRenderRow(); toast('Google Drive backup off'); return; }
+  if (!gdPlugin()) { e.target.checked = false; toast(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app'); return; }
+  try {
+    await gdAuth(true); // Google's own sign-in screen, app folder only
+    db.settings.gdOn = true; saveLocal(); gdRenderRow();
+    const existing = await gdFind(false);
+    if (existing && !db.settings.gdFileId && await ask('This Google account already has a Pocket Money backup. Add its entries to this phone first?', 'Add them', 'primary')) {
+      await gdRestore();
+    }
+    await gdBackup(false);
+    toast(`Backed up to ${db.settings.gdEmail || 'Google Drive'}`);
+  } catch (err) {
+    e.target.checked = false; db.settings.gdOn = false; saveLocal(); gdRenderRow(); gdShowError(err);
+  }
+};
+$('#btnGdRestore').onclick = async () => {
+  if (!gdPlugin()) return toast(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app');
+  if (!(await ask('Bring back your Google Drive backup? Entries already on this phone stay; missing ones are added.', 'Restore', 'primary'))) return;
+  try { await gdRestore(); } catch (err) { gdShowError(err); }
+};
+$('#onbRestore').onclick = async () => {
+  try {
+    if (await gdRestore()) {
+      db.settings.gdOn = true; save(); // keep backing up to the same account
+      onbStep = 0; $('#onb').hidden = true; render();
+    }
+  } catch (err) { gdShowError(err); }
+};
 $('#fileRestore').onchange = e => { if (e.target.files[0]) restore(e.target.files[0]); e.target.value = ''; };
 $('#btnWipe').onclick = async () => {
   if (!db.expenses.length && !db.loans.length) return toast('Nothing to delete');
@@ -1780,6 +1930,8 @@ splash(() => {
   else syncNotifications();
   setupNotificationActions();
   setupSmsAuto();
+  // safety net: at least one Google Drive backup a day, even with no changes
+  if (db.settings.gdOn && (!db.settings.gdLast || Date.now() - db.settings.gdLast > 864e5)) gdBackup(false).catch(() => {});
   scanSms(true);
 });
 
