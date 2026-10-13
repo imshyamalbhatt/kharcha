@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "2.5",
+  "versionCode": 8,
+  "versionName": "2.6",
   "url": "https://github.com/imshyamalbhatt/kharcha/releases/latest/download/PocketMoney.apk",
-  "notes": "Back up to your own Google Drive and restore after a reinstall."
+  "notes": "Sign in with Google and lock the app with your fingerprint."
 }
