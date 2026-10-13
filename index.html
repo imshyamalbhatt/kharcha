@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.5">
-<meta name="pm-notes" content="Back up to your own Google Drive, and restore it after a reinstall or on a new phone.">
+<meta name="pm-version" content="2.6">
+<meta name="pm-notes" content="Sign in with Google, your account in Settings, and an optional fingerprint / PIN lock.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -211,7 +211,20 @@ button.set-row:active{background:var(--chip)}
 .set-row .lbl{flex:1;min-width:0}
 .set-row .sub2{display:block;font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .set-row .sub2.err{color:var(--coral)}
-#onbRestore[hidden]{display:none!important}
+/* sign in with Google: Google's own button style + "G" mark */
+.g-logo{width:20px;height:20px;flex:none;display:inline-block;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E") center/contain no-repeat}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:420px;margin:0 auto;padding:12px 16px;border-radius:999px;border:1px solid #747775;background:#fff;color:#1F1F1F;font:inherit;font-size:15.5px;font-weight:600}
+.onb-signin{max-width:420px;width:100%;margin:6px auto 0}
+.onb-signin[hidden],#onbNext[hidden]{display:none!important}
+.acct-pic{width:40px;height:40px;border-radius:50%;flex:none;background:var(--pm-soft) center/cover no-repeat;color:var(--pm);display:grid;place-items:center;font-weight:700;font-size:16px}
+#acctIn[hidden],#acctOut[hidden],#lockRow[hidden]{display:none}
+/* lock screen */
+.lock{position:fixed;inset:0;z-index:90;background:radial-gradient(circle at 50% 38%,#14B877 0,#0A8F5C 40%,#054A31 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.lock[hidden]{display:none}
+.lock .wordmark{font-size:28px;font-weight:700;color:#fff;margin-top:18px}
+.lock .wordmark span{color:var(--brand-yellow)}
+.lock .tag{color:rgba(255,255,255,.85);font-size:15px}
+.lock .btn{flex:none;margin-top:22px;background:#fff;color:#065F3E;padding:12px 28px}
 .set-row .val{color:var(--muted);font-size:14px;white-space:nowrap}
 .set-row .chev svg.i{width:16px;height:16px}
 .set-row.danger,.set-row.danger svg.i{color:var(--coral)}
@@ -292,7 +305,11 @@ img,svg{-webkit-user-drag:none;user-drag:none}
   <button class="onb-skip" id="onbSkip">Skip</button>
   <div class="onb-body" id="onbBody"></div>
   <div class="onb-foot"><div class="dots" id="onbDots"></div><button class="btn primary" id="onbNext">Next</button></div>
-  <button class="link-btn" id="onbRestore" hidden style="margin:14px auto 0;display:flex"><span data-ic="clouddown"></span>Have a backup? Restore from Google Drive</button>
+  <!-- Optional sign-in on the first screen: restores a Drive backup and keeps backing up -->
+  <div id="onbSignin" class="onb-signin" hidden>
+    <button class="gbtn" id="onbGoogle"><span class="g-logo" aria-hidden="true"></span>Continue with Google</button>
+    <button class="link-btn" id="onbNoAccount" style="margin:6px auto 0;display:block;color:var(--muted);font-weight:600">Use without an account</button>
+  </div>
 </div>
 
 <header class="top">
@@ -434,10 +451,21 @@ img,svg{-webkit-user-drag:none;user-drag:none}
   <div class="panel">
     <div class="panel-head"><h2>Settings</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
     <!-- One short line per setting; explanations live behind the ⓘ and open in a pop-up -->
+    <div class="section-title">Account</div>
+    <div class="set-group" id="acctIn">
+      <div class="set-row acct"><span class="acct-pic" id="acctPic"></span><span class="lbl"><b id="acctName"></b><small class="sub2" id="acctEmail"></small></span></div>
+      <div class="set-row"><span data-ic="cloud"></span><span class="lbl">Google Drive backup<small class="sub2" id="gdSub">Off</small></span><button class="info" data-info="gdrive" aria-label="About Google Drive backup" data-ic="info"></button><label class="switch"><input type="checkbox" id="gdOn" aria-label="Google Drive backup"><span></span></label></div>
+      <button class="set-row" id="btnGdRestore"><span data-ic="clouddown"></span><span class="lbl">Restore from Google Drive</span><span class="chev" data-ic="right"></span></button>
+      <button class="set-row" id="btnSignOut"><span data-ic="logout"></span><span class="lbl">Sign out</span></button>
+    </div>
+    <div class="set-group" id="acctOut">
+      <button class="set-row" id="btnSignIn"><span class="g-logo" aria-hidden="true"></span><span class="lbl">Sign in with Google</span><span class="chev" data-ic="right"></span></button>
+    </div>
     <div class="section-title">General</div>
     <div class="set-group">
       <button class="set-row" data-set="theme"><span data-ic="moon"></span><span class="lbl">Theme</span><span class="val" id="valTheme"></span><span class="chev" data-ic="right"></span></button>
       <button class="set-row" data-set="budget"><span data-ic="wallet"></span><span class="lbl">Monthly budget</span><span class="val" id="valBudget"></span><span class="chev" data-ic="right"></span></button>
+      <div class="set-row" id="lockRow"><span data-ic="lock"></span><span class="lbl">App lock</span><button class="info" data-info="lock" aria-label="About app lock" data-ic="info"></button><label class="switch"><input type="checkbox" id="lockOn" aria-label="App lock"><span></span></label></div>
     </div>
     <div class="section-title">Reminders</div>
     <div class="set-group">
@@ -447,10 +475,6 @@ img,svg{-webkit-user-drag:none;user-drag:none}
     </div>
     <div class="section-title">Your data</div>
     <div class="set-group">
-      <div class="set-row"><span data-ic="cloud"></span><span class="lbl">Google Drive backup<small class="sub2" id="gdSub">Off</small></span><button class="info" data-info="gdrive" aria-label="About Google Drive backup" data-ic="info"></button><label class="switch"><input type="checkbox" id="gdOn" aria-label="Google Drive backup"><span></span></label></div>
-      <button class="set-row" id="btnGdRestore"><span data-ic="clouddown"></span><span class="lbl">Restore from Google Drive</span><span class="chev" data-ic="right"></span></button>
-    </div>
-    <div class="set-group" style="margin-top:10px">
       <button class="set-row" id="btnBackup"><span data-ic="download"></span><span class="lbl">Download backup file</span><span class="chev" data-ic="right"></span></button>
       <button class="set-row" id="btnRestore"><span data-ic="upload"></span><span class="lbl">Restore from a file</span><span class="chev" data-ic="right"></span></button>
       <button class="set-row" id="btnIntro"><span data-ic="restart"></span><span class="lbl">Show the intro again</span><span class="chev" data-ic="right"></span></button>
@@ -459,6 +483,14 @@ img,svg{-webkit-user-drag:none;user-drag:none}
     <input type="file" id="fileRestore" accept=".json,application/json" hidden>
     <button class="link-btn" data-info="privacy" style="margin:2px auto 0;display:flex;color:var(--muted);font-weight:500;font-size:13px"><span data-ic="shield"></span>Your data stays on this phone</button>
   </div>
+</div>
+
+<!-- App lock: covers everything until Android's fingerprint / face / PIN check succeeds -->
+<div id="lock" class="lock" hidden>
+  <img class="splash-logo" src="assets/logo.webp" alt="" onerror="this.onerror=null;this.src='https://imshyamalbhatt.github.io/kharcha/assets/logo.webp'">
+  <div class="wordmark">Pocket <span>Money</span></div>
+  <div class="tag" id="lockMsg">Locked</div>
+  <button class="btn" id="lockGo"><span data-ic="lock"></span>Unlock</button>
 </div>
 
 <!-- Small pop-up for settings choices and the ⓘ explanations -->
@@ -499,7 +531,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 
 <script>
 // Lucide icons (ISC licence, lucide.dev), inner SVG markup only
-const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />"};
+const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />","lock":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />","logout":"<path d=\"m16 17 5-5-5-5\" /><path d=\"M21 12H9\" /><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />"};
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const KEY = 'kharcha.v1'; // storage key kept from the first version so existing data survives
 const REMOTE = 'https://imshyamalbhatt.github.io/kharcha/';
@@ -573,7 +605,7 @@ function normalizeDb(d) {
   // contacts: udhaar person -> linked WhatsApp contact · payeeCats/payeeTitles: what the user taught us per payee
   d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, hiddenNames: [], ...d };
   // gdOn/gdEmail/gdFileId/gdLast/gdError: backup to the user's own Google Drive app folder
-  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', gdOn: false, ...(d.settings || {}) };
+  d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', gdOn: false, lock: false, ...(d.settings || {}) };
   if (d.onboarded === undefined) d.onboarded = d.expenses.length > 0; // existing users skip the intro
   return d;
 }
@@ -731,7 +763,7 @@ function waLink(l) {
 async function linkContact(person) {
   let c;
   if (native && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('ContactPicker')) {
-    try { c = await Capacitor.Plugins.ContactPicker.pick(); } catch (e) { return false; } // cancelled
+    try { skipNextLock(); c = await Capacitor.Plugins.ContactPicker.pick(); } catch (e) { return false; } // cancelled
   } else if (demo || !native) {
     c = { name: `${person.trim()} (demo contact)`, phone: '9800000000' };
     toast('On the phone, your contact list opens here');
@@ -742,6 +774,7 @@ async function linkContact(person) {
   return true;
 }
 function openExternal(url) {
+  skipNextLock(); // coming back from WhatsApp / the browser shouldn't lock the app
   if (native) location.href = url; // Capacitor hands non-app links to the phone (WhatsApp, browser)
   else window.open(url, '_blank', 'noopener');
 }
@@ -1479,6 +1512,7 @@ async function download(name, text, type) {
   if (native) { // inside the APK: write to a file, then open Android's share sheet (Drive, Files, WhatsApp...)
     try {
       const { Filesystem, Share } = Capacitor.Plugins;
+      skipNextLock();
       const r = await Filesystem.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
       await Share.share({ title: name, files: [r.uri], dialogTitle: 'Save or send ' + name });
     } catch (e) { if (!/cancel/i.test(e && e.message)) toast('Could not export: ' + (e && e.message)); }
@@ -1541,13 +1575,18 @@ const GD_FILE = 'pocket-money-backup.json';
 const GD_API = 'https://www.googleapis.com';
 const gdPlugin = () => native && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('GoogleDrive') ? Capacitor.Plugins.GoogleDrive : null;
 let gdToken = null, gdTokenAt = 0, gdBusy = false;
-async function gdAuth(interactive) {
-  if (gdToken && Date.now() - gdTokenAt < 45 * 60e3) return gdToken; // tokens last an hour
+// profile = also ask for name + photo (only on an explicit sign-in, so quiet background
+// backups never need a new consent screen).
+async function gdAuth(interactive, profile) {
+  if (!profile && gdToken && Date.now() - gdTokenAt < 45 * 60e3) return gdToken; // tokens last an hour
   const P = gdPlugin();
   if (!P) throw Object.assign(new Error('Update the app to use Google Drive backup'), { code: 'NO_PLUGIN' });
-  const r = await P.authorize({ interactive: !!interactive });
+  if (interactive) skipNextLock();
+  const r = await P.authorize({ interactive: !!interactive, profile: !!profile });
   gdToken = r.accessToken; gdTokenAt = Date.now();
   if (r.email) db.settings.gdEmail = r.email;
+  if (r.name) db.settings.gdName = r.name;
+  if (r.photo) db.settings.gdPhoto = r.photo;
   return gdToken;
 }
 async function gdFetch(path, opts = {}, interactive = false) {
@@ -1656,7 +1695,9 @@ function showOnb() {
   $('#onbDots').innerHTML = [1, 2, 3].map(i => `<i class="${i === onbStep ? 'on' : ''}"></i>`).join('');
   $('#onbNext').textContent = s.btn;
   $('#onbSkip').hidden = !s.skip;
-  $('#onbRestore').hidden = !(onbStep === 1 && gdPlugin()); // reinstall: bring data back from Google Drive
+  const signin = onbStep === 1 && !!gdPlugin(); // first screen: optional Continue with Google
+  $('#onbSignin').hidden = !signin;
+  $('#onbNext').hidden = signin; // "Use without an account" takes its place
   $('#onb').hidden = false;
 }
 function endOnb() { onbStep = 0; $('#onb').hidden = true; db.onboarded = true; save(); render(); syncNotifications(); }
@@ -1734,7 +1775,9 @@ $('#btnSettings').onclick = () => {
   $('#nudge').checked = db.settings.nudge;
   $('#smsOn').checked = db.settings.sms;
   $('#smsSection').hidden = native && !smsPlugin();
-  gdRenderRow();
+  renderAccount();
+  $('#lockOn').checked = !!db.settings.lock;
+  $('#lockRow').hidden = native && !lockPlugin();
   openSheet($('#settings'));
 };
 
@@ -1761,6 +1804,7 @@ const INFO = {
   nudge: ['Daily reminder', '<p>Every evening at <b>9 PM</b> you get a gentle nudge to log the day\'s spends.</p><p>Turn it off here anytime.</p>'],
   sms: ['Auto-detect from SMS', '<p>When your bank texts a debit like <b>"Rs.250 sent to Swiggy"</b>, you get an alert within seconds and the spend waits on Home for a one-tap add.</p><p>Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</p><p>No alerts on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? In phone Settings → Apps → Pocket Money, turn on <b>Autostart</b>.</p>'],
   privacy: ['Your data stays yours', '<p>Pocket Money keeps everything <b>on this phone</b>. With Google Drive backup on, a copy also goes to <b>your own</b> Google Drive. No one else gets it.</p>'],
+  lock: ['App lock', '<p>Pocket Money asks for your <b>fingerprint, face or phone PIN</b> when you open it, and again if you come back after more than 30 seconds away.</p><p>Android does the check. The app never sees your fingerprint or PIN.</p>'],
   gdrive: ['Google Drive backup', '<p>A copy of your data is saved in a <b>hidden Pocket Money folder in your own Google Drive</b>, a few seconds after every change.</p><p>Pocket Money can only see that folder: not your files, Gmail or contacts.</p><p>New phone or reinstalled the app? Choose <b>Restore from Google Drive</b>.</p>'],
 };
 function openSetting(which) {
@@ -1816,7 +1860,7 @@ $('#nudge').onchange = e => {
 $('#btnIntro').onclick = () => { closeSheets(); onbStep = 1; showOnb(); };
 $('#btnCsv').onclick = exportCsv;
 $('#btnBackup').onclick = () => download(`pocket-money-backup-${today()}.json`, JSON.stringify(db, null, 1), 'application/json');
-$('#btnRestore').onclick = () => $('#fileRestore').click();
+$('#btnRestore').onclick = () => { skipNextLock(); $('#fileRestore').click(); };
 $('#gdOn').onchange = async e => {
   if (!e.target.checked) { db.settings.gdOn = false; saveLocal(); gdRenderRow(); toast('Google Drive backup off'); return; }
   if (!gdPlugin()) { e.target.checked = false; toast(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app'); return; }
@@ -1838,14 +1882,100 @@ $('#btnGdRestore').onclick = async () => {
   if (!(await ask('Bring back your Google Drive backup? Entries already on this phone stay; missing ones are added.', 'Restore', 'primary'))) return;
   try { await gdRestore(); } catch (err) { gdShowError(err); }
 };
-$('#onbRestore').onclick = async () => {
+// Sign in with Google (optional). Restores this account's Drive backup if there is one,
+// then keeps backing up. Used by the first screen and by Settings → Account.
+async function signInGoogle({ fromIntro } = {}) {
+  if (!gdPlugin()) return toast(native ? 'Update the app to sign in with Google' : 'Works in the phone app');
   try {
-    if (await gdRestore()) {
-      db.settings.gdOn = true; save(); // keep backing up to the same account
-      onbStep = 0; $('#onb').hidden = true; render();
+    await gdAuth(true, true); // Google's own account picker; asks for name + photo too
+    db.settings.gdOn = true; saveLocal();
+    const existing = await gdFind(false);
+    if (existing && (fromIntro || (!db.expenses.length && !db.loans.length))) await gdRestore();
+    else if (existing && !db.settings.gdFileId && await ask('This Google account already has a Pocket Money backup. Add its entries to this phone first?', 'Add them', 'primary')) await gdRestore();
+    if (fromIntro) { onbStep = 0; $('#onb').hidden = true; db.onboarded = true; }
+    await gdBackup(false);
+    save(); render(); renderAccount(); syncNotifications();
+    toast(`Signed in as ${db.settings.gdName || db.settings.gdEmail || 'your Google account'}. Backups are on.`);
+  } catch (err) {
+    if (!db.settings.gdFileId) db.settings.gdOn = false;
+    saveLocal(); renderAccount(); gdShowError(err);
+  }
+}
+async function signOutGoogle() {
+  if (!(await ask('Sign out of Google? Your data stays on this phone; Drive backups stop until you sign in again.', 'Sign out', 'primary'))) return;
+  Object.assign(db.settings, { gdOn: false, gdEmail: '', gdName: '', gdPhoto: '', gdFileId: '', gdLast: 0, gdError: '' });
+  gdToken = null; saveLocal(); renderAccount();
+  toast('Signed out. Your data is still on this phone.');
+}
+// Settings → Account: name, email and Google photo when signed in, else "Sign in with Google"
+function renderAccount() {
+  const s = db.settings, signed = !!s.gdEmail;
+  $('#acctIn').hidden = !signed;
+  $('#acctOut').hidden = signed;
+  if (signed) {
+    $('#acctName').textContent = s.gdName || s.gdEmail.split('@')[0];
+    $('#acctEmail').textContent = s.gdEmail;
+    const pic = $('#acctPic'), photo = /^https:\/\/[\w.-]+\.(googleusercontent|google)\.com\//.test(s.gdPhoto || '') ? s.gdPhoto : '';
+    pic.style.backgroundImage = photo ? `url("${encodeURI(photo)}")` : '';
+    pic.textContent = photo ? '' : (s.gdName || s.gdEmail)[0].toUpperCase();
+  }
+  gdRenderRow();
+}
+$('#btnSignIn').onclick = () => signInGoogle();
+$('#btnSignOut').onclick = signOutGoogle;
+$('#onbGoogle').onclick = () => signInGoogle({ fromIntro: true });
+
+// ---------- app lock: Android's fingerprint / face / PIN check ----------
+const lockPlugin = () => native && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('AppLock') ? Capacitor.Plugins.AppLock : null;
+var skipLockUntil = 0, hiddenAt = 0, unlocking = false, excused = false; // var: used by functions that may run early
+// Leaving the app on purpose (WhatsApp, Google sign-in, contacts, file picker, the PIN screen
+// itself) shouldn't lock it on return. Only a departure within 15 s of that step is excused.
+function skipNextLock() { skipLockUntil = Date.now() + 15000; }
+async function unlock() {
+  const P = lockPlugin();
+  if (!P) { $('#lock').hidden = true; return; }
+  if (unlocking) return;
+  unlocking = true; skipNextLock();
+  try {
+    await P.authenticate({ title: 'Unlock Pocket Money', subtitle: 'Use your fingerprint, face or phone PIN' });
+    $('#lock').hidden = true; $('#lockMsg').textContent = 'Locked';
+  } catch (e) { $('#lockMsg').textContent = 'Tap Unlock to try again'; }
+  finally { unlocking = false; }
+}
+function lockNow() {
+  if (!db.settings.lock || !lockPlugin()) return;
+  $('#lock').hidden = false;
+  unlock();
+}
+$('#lockGo').onclick = unlock;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    hiddenAt = Date.now();
+    excused = Date.now() < skipLockUntil; // left for our own outside step
+    skipLockUntil = 0;
+    return;
+  }
+  if (excused) { excused = false; return; }
+  if (db.settings.lock && $('#lock').hidden && Date.now() - hiddenAt > 30000) lockNow(); // away > 30 s
+});
+$('#lockOn').onchange = async e => {
+  const P = lockPlugin(), want = e.target.checked;
+  if (!P) { e.target.checked = false; return toast(native ? 'Update the app to use app lock' : 'Works in the phone app'); }
+  if (want) {
+    const a = await P.available().catch(() => ({ available: false }));
+    if (!a.available) {
+      e.target.checked = false;
+      return dialog({ title: 'Set up a screen lock first', body: '<p>App lock uses your phone\'s fingerprint, face or PIN. Add one in phone <b>Settings → Security</b>, then try again.</p>' });
     }
-  } catch (err) { gdShowError(err); }
+  }
+  skipNextLock();
+  try {
+    await P.authenticate({ title: want ? 'Turn on app lock' : 'Turn off app lock', subtitle: 'Confirm it\'s you' });
+    db.settings.lock = want; saveLocal();
+    toast(want ? 'App lock on. Pocket Money will ask for your fingerprint or PIN.' : 'App lock off');
+  } catch (err) { e.target.checked = !want; }
 };
+$('#onbNoAccount').onclick = () => { onbStep = 2; showOnb(); };
 $('#fileRestore').onchange = e => { if (e.target.files[0]) restore(e.target.files[0]); e.target.value = ''; };
 $('#btnWipe').onclick = async () => {
   if (!db.expenses.length && !db.loans.length) return toast('Nothing to delete');
@@ -1872,7 +2002,7 @@ document.addEventListener('dragstart', e => { if (!inField(e.target)) e.preventD
 function syncScrollLock() {
   if (!document || !document.documentElement) return; // page closing
   const open = !!document.querySelector('.sheet:not(.hidden)') ||
-    ['#dlg', '#ask', '#gate', '#onb', '#splash'].some(s => $(s) && !$(s).hidden);
+    ['#dlg', '#ask', '#gate', '#onb', '#splash', '#lock'].some(s => $(s) && !$(s).hidden);
   document.documentElement.classList.toggle('lock', open);
 }
 new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
@@ -1920,6 +2050,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { checkLiveUpdate(); checkApk(); scanSms(); }
 });
 
+lockNow(); // app lock first: nothing is visible until the fingerprint / PIN check passes
 checkApk(); // straight away, so the update gate covers the splash before the app shows
 splash(() => {
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots

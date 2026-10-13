@@ -17,6 +17,8 @@ setup exists. Done once, in the Google account that will be used (Shyamal's).
    - Audience: **External** → Next
    - Contact email = your Gmail → Next → agree → **Create**
 5. **Data access** → **Add or remove scopes** → tick `.../auth/drive.appdata` (search "drive.appdata") and `.../auth/userinfo.email` → Update → **Save**.
+   Since 2.6 (Sign in with Google shows your name + photo) also add `https://www.googleapis.com/auth/userinfo.profile`
+   (paste it in "Manually add scopes" → Add to table → Update → Save). It is non-sensitive too.
 6. **Clients** → **Create client** → Application type **Android**:
    - Name `Pocket Money Android`
    - Package name `com.shyamal.kharcha`

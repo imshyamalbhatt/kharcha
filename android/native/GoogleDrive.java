@@ -28,6 +28,7 @@ import java.util.Arrays;
 public class GoogleDrive extends Plugin {
     private static final Scope APP_FOLDER = new Scope("https://www.googleapis.com/auth/drive.appdata");
     private static final Scope EMAIL = new Scope("email");
+    private static final Scope PROFILE = new Scope("profile"); // name + photo for Settings → Account (2.6)
     private ActivityResultLauncher<IntentSenderRequest> consent;
     private PluginCall waiting;
 
@@ -51,7 +52,10 @@ public class GoogleDrive extends Plugin {
     @PluginMethod
     public void authorize(PluginCall call) {
         boolean interactive = Boolean.TRUE.equals(call.getBoolean("interactive", true));
-        AuthorizationRequest req = AuthorizationRequest.builder().setRequestedScopes(Arrays.asList(APP_FOLDER, EMAIL)).build();
+        // name + photo only on an explicit sign-in, so quiet background backups never need new consent
+        boolean profile = Boolean.TRUE.equals(call.getBoolean("profile", false));
+        AuthorizationRequest req = AuthorizationRequest.builder()
+            .setRequestedScopes(profile ? Arrays.asList(APP_FOLDER, EMAIL, PROFILE) : Arrays.asList(APP_FOLDER, EMAIL)).build();
         Identity.getAuthorizationClient(getActivity()).authorize(req)
             .addOnSuccessListener(result -> {
                 if (!result.hasResolution()) { resolve(call, result); return; }
@@ -73,6 +77,8 @@ public class GoogleDrive extends Plugin {
         out.put("accessToken", r.getAccessToken());
         GoogleSignInAccount acc = r.toGoogleSignInAccount();
         out.put("email", acc != null ? acc.getEmail() : null);
+        out.put("name", acc != null ? acc.getDisplayName() : null);
+        out.put("photo", acc != null && acc.getPhotoUrl() != null ? acc.getPhotoUrl().toString() : null);
         call.resolve(out);
     }
 }
