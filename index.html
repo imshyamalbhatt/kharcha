@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.6">
-<meta name="pm-notes" content="Sign in with Google, your account in Settings, and an optional fingerprint / PIN lock.">
+<meta name="pm-version" content="2.6.1">
+<meta name="pm-notes" content="Pop-ups have a clear outline again, and your Google account shows in Settings.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -135,8 +135,8 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .sheet.hidden{display:none}
 .sheet.center{align-items:center;padding:24px}
 .backdrop{position:absolute;inset:0;background:rgba(6,20,14,.5)}
-.panel{position:relative;background:var(--card);width:100%;max-width:640px;max-height:94vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:up .18s ease-out}
-.sheet.center .panel{border-radius:20px;max-width:390px;padding:20px}
+.panel{position:relative;background:var(--card);width:100%;max-width:640px;max-height:94vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:up .18s ease-out;border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(6,20,14,.18)}
+.sheet.center .panel{border-radius:20px;max-width:390px;padding:20px;border:1px solid var(--line);box-shadow:0 18px 44px rgba(6,20,14,.30),0 2px 6px rgba(6,20,14,.12)}
 @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
 .panel-head h2{margin:0;font-family:var(--display);font-size:19px;font-weight:700}
@@ -217,14 +217,14 @@ button.set-row:active{background:var(--chip)}
 .onb-signin{max-width:420px;width:100%;margin:6px auto 0}
 .onb-signin[hidden],#onbNext[hidden]{display:none!important}
 .acct-pic{width:40px;height:40px;border-radius:50%;flex:none;background:var(--pm-soft) center/cover no-repeat;color:var(--pm);display:grid;place-items:center;font-weight:700;font-size:16px}
-#acctIn[hidden],#acctOut[hidden],#lockRow[hidden]{display:none}
+#acctIn[hidden],#acctOut[hidden],#lockRow[hidden],#btnBackup[hidden],#btnRestore[hidden]{display:none}
 /* lock screen */
-.lock{position:fixed;inset:0;z-index:90;background:radial-gradient(circle at 50% 38%,#14B877 0,#0A8F5C 40%,#054A31 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
-.lock[hidden]{display:none}
-.lock .wordmark{font-size:28px;font-weight:700;color:#fff;margin-top:18px}
-.lock .wordmark span{color:var(--brand-yellow)}
-.lock .tag{color:rgba(255,255,255,.85);font-size:15px}
-.lock .btn{flex:none;margin-top:22px;background:#fff;color:#065F3E;padding:12px 28px}
+.lockscreen{position:fixed;inset:0;z-index:90;background:radial-gradient(circle at 50% 38%,#14B877 0,#0A8F5C 40%,#054A31 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.lockscreen[hidden]{display:none}
+.lockscreen .wordmark{font-size:28px;font-weight:700;color:#fff;margin-top:18px}
+.lockscreen .wordmark span{color:var(--brand-yellow)}
+.lockscreen .tag{color:rgba(255,255,255,.85);font-size:15px}
+.lockscreen .btn{flex:none;margin-top:22px;background:#fff;color:#065F3E;padding:12px 28px}
 .set-row .val{color:var(--muted);font-size:14px;white-space:nowrap}
 .set-row .chev svg.i{width:16px;height:16px}
 .set-row.danger,.set-row.danger svg.i{color:var(--coral)}
@@ -252,7 +252,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 #gate{z-index:80} /* above the splash: decided before the app shows */
 #gate .backdrop{background:rgba(6,20,14,.7)}
 .ask[hidden]{display:none}
-.ask-box{position:relative;background:var(--card);border-radius:18px;padding:20px;max-width:360px;width:100%}
+.ask-box{position:relative;background:var(--card);border-radius:18px;padding:20px;max-width:360px;width:100%;border:1px solid var(--line);box-shadow:0 18px 44px rgba(6,20,14,.30),0 2px 6px rgba(6,20,14,.12)}
 .ask-box p{margin:0 0 4px;font-size:16px;line-height:1.45}
 #toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#0F1F18;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:45;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1}
@@ -481,12 +481,12 @@ img,svg{-webkit-user-drag:none;user-drag:none}
       <button class="set-row danger" id="btnWipe"><span data-ic="trash"></span><span class="lbl">Delete all data</span></button>
     </div>
     <input type="file" id="fileRestore" accept=".json,application/json" hidden>
-    <button class="link-btn" data-info="privacy" style="margin:2px auto 0;display:flex;color:var(--muted);font-weight:500;font-size:13px"><span data-ic="shield"></span>Your data stays on this phone</button>
+    <button class="link-btn" id="privacyNote" data-info="privacy" style="margin:2px auto 0;display:flex;color:var(--muted);font-weight:500;font-size:13px"><span data-ic="shield"></span>Your data stays on this phone</button>
   </div>
 </div>
 
 <!-- App lock: covers everything until Android's fingerprint / face / PIN check succeeds -->
-<div id="lock" class="lock" hidden>
+<div id="lock" class="lockscreen" hidden>
   <img class="splash-logo" src="assets/logo.webp" alt="" onerror="this.onerror=null;this.src='https://imshyamalbhatt.github.io/kharcha/assets/logo.webp'">
   <div class="wordmark">Pocket <span>Money</span></div>
   <div class="tag" id="lockMsg">Locked</div>
@@ -1584,6 +1584,13 @@ async function gdAuth(interactive, profile) {
   if (interactive) skipNextLock();
   const r = await P.authorize({ interactive: !!interactive, profile: !!profile });
   gdToken = r.accessToken; gdTokenAt = Date.now();
+  // Some phones' Google sign-in doesn't hand over the account details: ask Google directly.
+  if ((!r.email || (profile && !r.name)) && gdToken) {
+    try {
+      const u = await (await fetch(GD_API + '/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + gdToken } })).json();
+      r.email = r.email || u.email; r.name = r.name || u.name; r.photo = r.photo || u.picture;
+    } catch (e) {}
+  }
   if (r.email) db.settings.gdEmail = r.email;
   if (r.name) db.settings.gdName = r.name;
   if (r.photo) db.settings.gdPhoto = r.photo;
@@ -1788,6 +1795,7 @@ function dialog({ title, body = '', actions = [{ label: 'OK' }] }) {
   $('#dlgActions').innerHTML = actions.map((a, i) => `<button class="btn ${a.kind || 'primary'}" data-dlg="${i}">${a.label}</button>`).join('');
   $('#dlgActions').hidden = !actions.length;
   $('#dlg').hidden = false;
+  dialog.openedAt = Date.now();
   const close = () => { $('#dlg').hidden = true; };
   $('#dlgActions').onclick = e => {
     const b = e.target.closest('[data-dlg]'); if (!b) return;
@@ -1798,7 +1806,9 @@ function dialog({ title, body = '', actions = [{ label: 'OK' }] }) {
   $('#dlgBg').onclick = close;
   return close;
 }
-window.addEventListener('popstate', () => { $('#dlg').hidden = true; });
+// Back closes an open pop-up, but not one that opened in the same moment a sheet was closing
+// (that sheet's own history step arrives a few ms later).
+window.addEventListener('popstate', () => { if (Date.now() - (dialog.openedAt || 0) > 400) $('#dlg').hidden = true; });
 
 const INFO = {
   nudge: ['Daily reminder', '<p>Every evening at <b>9 PM</b> you get a gentle nudge to log the day\'s spends.</p><p>Turn it off here anytime.</p>'],
@@ -1909,16 +1919,21 @@ async function signOutGoogle() {
 }
 // Settings → Account: name, email and Google photo when signed in, else "Sign in with Google"
 function renderAccount() {
-  const s = db.settings, signed = !!s.gdEmail;
+  // Backing up to Drive counts as signed in, even if Google never handed over the email.
+  const s = db.settings, signed = !!(s.gdEmail || s.gdOn || s.gdFileId);
   $('#acctIn').hidden = !signed;
   $('#acctOut').hidden = signed;
   if (signed) {
-    $('#acctName').textContent = s.gdName || s.gdEmail.split('@')[0];
-    $('#acctEmail').textContent = s.gdEmail;
+    $('#acctName').textContent = s.gdName || (s.gdEmail ? s.gdEmail.split('@')[0] : 'Google account');
+    $('#acctEmail').textContent = s.gdEmail || 'Backing up to your Google Drive';
     const pic = $('#acctPic'), photo = /^https:\/\/[\w.-]+\.(googleusercontent|google)\.com\//.test(s.gdPhoto || '') ? s.gdPhoto : '';
     pic.style.backgroundImage = photo ? `url("${encodeURI(photo)}")` : '';
-    pic.textContent = photo ? '' : (s.gdName || s.gdEmail)[0].toUpperCase();
+    pic.textContent = photo ? '' : (s.gdName || s.gdEmail || 'G')[0].toUpperCase();
+    if (!s.gdEmail && s.gdOn) gdAuth(false).then(() => { if (db.settings.gdEmail) { saveLocal(); renderAccount(); } }).catch(() => {}); // fill in the email quietly
   }
+  // With Google Drive backup, the manual backup-file rows aren't needed; they come back if you sign out.
+  $('#btnBackup').hidden = $('#btnRestore').hidden = signed;
+  $('#privacyNote').innerHTML = icon('shield') + (signed && s.gdOn ? 'Backed up to your own Google Drive' : 'Your data stays on this phone');
   gdRenderRow();
 }
 $('#btnSignIn').onclick = () => signInGoogle();
@@ -2056,6 +2071,7 @@ splash(() => {
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
   if (/[?&]open=settings/.test(location.search)) $('#btnSettings').click();
   if (/[?&]open=loan/.test(location.search)) openLoanForm(null);
+  if (/[?&]open=info/.test(location.search)) { $('#btnSettings').click(); dialog({ title: INFO.sms[0], body: INFO.sms[1] }); }
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();
