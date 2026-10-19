@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.6.1">
-<meta name="pm-notes" content="Pop-ups have a clear outline again, and your Google account shows in Settings.">
+<meta name="pm-version" content="2.7">
+<meta name="pm-notes" content="Trips and events: big one-off spends stay out of your monthly budget. Split a bill and friends land in Udhaar.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -171,6 +171,22 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .split-box[hidden]{display:none}
 .split-box .close{width:30px;height:30px;font-size:18px;font-weight:600}
 .split-box b{color:var(--ink);font-variant-numeric:tabular-nums}
+.split-who{flex-basis:100%;min-width:0}
+.split-who .chips{margin:2px 0 8px}
+.split-who .chips[hidden],#splitOwe[hidden],#fEventWrap[hidden]{display:none}
+.split-add{display:flex;gap:8px}
+.split-add .txt{flex:1;min-width:0;padding:10px 12px;font-size:15px}
+.split-add .btn{flex:none;padding:10px 16px;font-size:14.5px}
+#splitOwe{margin-top:8px;line-height:1.45}
+.pchip .pn{padding:7px 4px 7px 12px}
+.chip.on .chip-x{color:rgba(255,255,255,.85)}
+.chip.on svg.i+svg.i{width:14px;height:14px;opacity:.85;margin-left:-2px}
+.chip.add{border-style:dashed;color:var(--pm);font-weight:600}
+/* trips & events */
+.ev-card[data-event]{cursor:pointer}
+.big small.of{font-size:15px;font-weight:600;color:var(--muted);letter-spacing:0}
+.row2.even{grid-template-columns:1fr 1fr}
+.date-lbl{font-size:12px;font-weight:600;color:var(--muted);display:grid;gap:4px}
 .section-title{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.06em}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:6px 0}
 .seg button{padding:11px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -333,6 +349,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
       <button class="btn ghost" id="btnCsv" style="flex:none;padding:10px 14px;font-size:14px"><span data-ic="download"></span>Excel</button>
     </div>
     <div class="chips scroll" id="histModes"></div>
+    <div class="chips scroll" id="histEvents"></div>
     <div id="histList"></div>
   </section>
   <section id="tab-udhaar" class="tab"></section>
@@ -360,11 +377,18 @@ img,svg{-webkit-user-drag:none;user-drag:none}
       <span>between</span>
       <button class="close" data-split="-1" aria-label="Fewer people">−</button><b id="splitN">2</b><button class="close" data-split="1" aria-label="More people">+</button>
       <span>people · your share <b id="splitShare">₹0</b></span>
+      <!-- Optional: who owes you. Each name becomes an udhaar entry for their share. -->
+      <div class="split-who">
+        <div class="chips" id="splitNames" hidden></div>
+        <div class="split-add"><input id="splitName" class="txt" placeholder="Who owes you? (optional)" autocomplete="off" maxlength="40" enterkeyhint="go"><button class="btn ghost" id="splitAdd">Add</button></div>
+        <div class="sub" id="splitOwe" hidden></div>
+      </div>
     </div>
     <div class="section-title">Paid via</div>
     <div class="seg" id="fMode"></div>
     <div class="section-title">Category</div>
     <div class="chips" id="fCat"></div>
+    <div id="fEventWrap" hidden><div class="section-title">Trip or event</div><div class="chips" id="fEvent"></div></div>
     <div class="row2" style="margin-top:10px">
       <input id="fDate" class="txt" type="date">
       <input id="fNote" class="txt" placeholder="Note (optional)" maxlength="100">
@@ -372,6 +396,25 @@ img,svg{-webkit-user-drag:none;user-drag:none}
     <div class="actions">
       <button class="btn danger" id="btnDelete" style="flex:none;padding:14px 18px">Delete</button>
       <button class="btn primary" id="btnSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- New / edit trip or event -->
+<div id="eventSheet" class="sheet hidden">
+  <div class="backdrop" data-close></div>
+  <div class="panel">
+    <div class="panel-head"><h2 id="evTitle">New trip or event</h2><button class="close" data-close aria-label="Close" data-ic="x"></button></div>
+    <input id="evName" class="txt" placeholder="Name, e.g. Goa trip, Diwali, Wedding" autocomplete="off" maxlength="40">
+    <div class="row2 even" style="margin-top:10px">
+      <label class="date-lbl">From<input id="evStart" class="txt" type="date"></label>
+      <label class="date-lbl">To<input id="evEnd" class="txt" type="date"></label>
+    </div>
+    <div class="amt-field"><span class="rs">₹</span><input id="evBudget" class="txt" type="text" inputmode="decimal" placeholder="Budget for it (optional)" autocomplete="off" maxlength="30" aria-label="Budget"></div>
+    <p class="sub" style="margin:8px 2px 0;line-height:1.45">Spends in these dates are tagged automatically and kept out of your monthly budget.</p>
+    <div class="actions">
+      <button class="btn danger" id="evDelete" style="flex:none;padding:14px 18px">Delete</button>
+      <button class="btn primary" id="evSave">Save</button>
     </div>
   </div>
 </div>
@@ -531,7 +574,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 
 <script>
 // Lucide icons (ISC licence, lucide.dev), inner SVG markup only
-const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />","lock":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />","logout":"<path d=\"m16 17 5-5-5-5\" /><path d=\"M21 12H9\" /><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />"};
+const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />","lock":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />","logout":"<path d=\"m16 17 5-5-5-5\" /><path d=\"M21 12H9\" /><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />","event":"<path d=\"M5.8 11.3 2 22l10.7-3.79\" /><path d=\"M4 3h.01\" /><path d=\"M22 8h.01\" /><path d=\"M15 2h.01\" /><path d=\"M22 20h.01\" /><path d=\"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10\" /><path d=\"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17\" /><path d=\"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7\" /><path d=\"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z\" />","stay":"<path d=\"M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8\" /><path d=\"M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4\" /><path d=\"M12 4v6\" /><path d=\"M2 18h20\" />","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /><circle cx=\"9\" cy=\"7\" r=\"4\" />"};
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const KEY = 'kharcha.v1'; // storage key kept from the first version so existing data survives
 const REMOTE = 'https://imshyamalbhatt.github.io/kharcha/';
@@ -540,7 +583,7 @@ const MODES = [
   { id: 'Card', ic: 'card' },
   { id: 'UPI',  ic: 'upi' },
 ];
-const CATS = [['Food','food'],['Groceries','groceries'],['Travel','travel'],['Shopping','shopping'],['Bills','bills'],['Health','health'],['Fun','fun'],['Other','other']];
+const CATS = [['Food','food'],['Groceries','groceries'],['Travel','travel'],['Stay','stay'],['Shopping','shopping'],['Bills','bills'],['Health','health'],['Fun','fun'],['Other','other']];
 const OPS = '+-×÷';
 const UDHAAR = true; // set false to show Udhaar as "coming soon" again
 const WA_DEFAULT = 'Hey {name}, just a reminder about the {amount} from {date} 🙂';
@@ -603,7 +646,8 @@ function normalizeDb(d) {
   if (!d || !Array.isArray(d.expenses)) d = { expenses: [] };
   // pending: spends found in SMS waiting for review · smsSeen: dedupe keys of SMS already handled
   // contacts: udhaar person -> linked WhatsApp contact · payeeCats/payeeTitles: what the user taught us per payee
-  d = { budget: 0, lastMode: 'UPI', loans: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, hiddenNames: [], ...d };
+  // events: trips / one-off occasions ({ id, name, start, end, budget }); an expense in one carries event: id
+  d = { budget: 0, lastMode: 'UPI', loans: [], events: [], pending: [], smsSeen: [], smsSince: 0, contacts: {}, payeeCats: {}, payeeTitles: {}, hiddenNames: [], ...d };
   // gdOn/gdEmail/gdFileId/gdLast/gdError: backup to the user's own Google Drive app folder
   d.settings = { nudge: true, sms: false, waText: WA_DEFAULT, theme: 'system', gdOn: false, lock: false, ...(d.settings || {}) };
   if (d.onboarded === undefined) d.onboarded = d.expenses.length > 0; // existing users skip the intro
@@ -625,6 +669,13 @@ if (demo && !fresh && !db.demoSeeded && !db.expenses.length) {
     { id: 'ds2', amount: 149, mode: 'UPI', payeeKey: 'jio recharge', title: 'Jio recharge', category: 'Bills', date: today(), at: Date.now() - 7200e3, ref: '428912345684' },
     { id: 'ds3', amount: 1299, mode: 'Card', payeeKey: 'amazon pay india', title: 'Amazon', category: 'Shopping', date: addDays(-1), at: Date.now() - 90000e3, ref: '' },
   ];
+  save();
+}
+if (demo && !fresh && !db.demoEvents) { // preview: a trip in progress, kept out of the monthly budget
+  db.events.push({ id: 'dev1', name: 'Goa trip', start: addDays(-2), end: addDays(3), budget: 40000, createdAt: 1 });
+  [[0, 'Beach shack lunch', 1450, 'UPI', 'Food'], [1, 'Scooter rent', 900, 'Cash', 'Travel'], [2, 'Hotel, 5 nights', 12000, 'Card', 'Stay'], [2, 'Flight to Goa', 5400, 'Card', 'Travel']]
+    .forEach(([ago, title, amount, mode, category], i) => db.expenses.push({ id: 'demoev' + i, title, amount, mode, category, date: addDays(-ago), note: '', createdAt: Date.now() - i, event: 'dev1' }));
+  db.demoEvents = true;
   save();
 }
 function sampleData() {
@@ -691,8 +742,9 @@ function calc(s) {
 let viewMonth = today().slice(0, 7);
 let tab = ((location.search.match(/[?&]tab=(home|history|udhaar)/) || [])[1]) || 'home'; // ?tab= is for testing
 let histMode = 'All';
+let histEvent = null; // History showing one trip / event instead of a month
 let openPerson = null;
-let form = { id: null, expr: '', mode: 'UPI', category: 'Other' };
+let form = { id: null, expr: '', mode: 'UPI', category: 'Other', names: [] };
 
 function monthLabel(m) {
   const [y, mo] = m.split('-').map(Number);
@@ -715,12 +767,103 @@ function dayLabel(d) {
   return new Date(yy, mm - 1, dd).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-function itemHTML(e, withDate) {
-  const meta = [withDate ? dayLabel(e.date) : '', `${modeIcon(e.mode)} ${e.mode}`, e.category, e.note ? esc(e.note) : ''].filter(Boolean).join(' · ');
+function itemHTML(e, withDate, hideEvent) {
+  const ev = !hideEvent && e.event && evName(e.event);
+  const meta = [withDate ? dayLabel(e.date) : '', `${modeIcon(e.mode)} ${e.mode}`, ev ? `${icon('event', 'mode-ic')} ${esc(ev)}` : e.category, e.note ? esc(e.note) : ''].filter(Boolean).join(' · ');
   return `<div class="item" data-id="${e.id}">
     <div class="ico">${catIcon(e.category)}</div>
     <div class="mid"><div class="t">${esc(e.title)}</div><div class="m">${meta}</div></div>
     <div class="a">${money(e.amount)}</div></div>`;
+}
+
+// ---------- trips & events: one-off spends kept out of the monthly budget ----------
+// Spends dated inside an event's dates are tagged with it automatically (the add screen shows the
+// tag; tap it to untag). They still count as money spent, just not against the monthly budget.
+const evById = id => db.events.find(v => v.id === id);
+const evName = id => (evById(id) || {}).name || '';
+const eventFor = d => db.events.filter(v => v.start <= d && d <= v.end).sort((a, b) => b.start.localeCompare(a.start))[0] || null; // latest-starting if two overlap
+const dayDiff = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5);
+const evItems = id => db.expenses.filter(e => e.event === id).sort(byNewest);
+const evDates = v => v.start === v.end ? shortDate(v.start) : `${shortDate(v.start)} – ${shortDate(v.end)}`;
+const listNames = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+function evStatus(v) {
+  const t = today(), days = dayDiff(v.start, v.end) + 1;
+  if (t < v.start) { const n = dayDiff(t, v.start); return n === 1 ? 'Starts tomorrow' : `Starts in ${n} days`; }
+  if (t > v.end) return `${days} day${days === 1 ? '' : 's'}`;
+  return `Day ${dayDiff(v.start, t) + 1} of ${days}`;
+}
+// full: the History view of one event (stats, categories, who still owes you); else the small Home card
+function eventCard(v, full) {
+  const items = evItems(v.id), total = sum(items), t = today();
+  const days = dayDiff(v.start, v.end) + 1;
+  const daysSoFar = t < v.start ? 0 : t > v.end ? days : dayDiff(v.start, t) + 1;
+  const perDay = daysSoFar && total ? Math.round(total / daysSoFar) : 0;
+  let h = `<div class="card ev-card"${full ? '' : ` data-event="${v.id}"`}>
+    <div class="card-head"><span class="label">${icon('event', 'mode-ic')} ${esc(v.name)} · ${evStatus(v)}</span>
+      ${full ? `<button class="link-btn" data-evedit="${v.id}">Edit</button>` : `<span class="link-btn">Open ${icon('right')}</span>`}</div>`;
+  let note = evDates(v) + (perDay ? ` · ${money(perDay)} a day` : '');
+  if (v.budget > 0) {
+    const left = round2(v.budget - total), pct = Math.min(100, total / v.budget * 100);
+    const color = left < 0 ? 'var(--coral)' : pct >= 80 ? 'var(--warn)' : 'var(--pm)';
+    h += `<div class="big ${left < 0 ? 'over' : ''}">${money(total)}<small class="of"> of ${money(v.budget)}</small></div>
+      <div class="progress"><div style="width:${pct}%;background:${color}"></div></div>`;
+    note += left < 0 ? ` · <span class="over">${money(-left)} over</span>` : ` · ${money(left)} left`;
+  } else h += `<div class="big">${money(total)}</div>`;
+  h += `<div class="sub">${note}</div>`;
+  if (full) {
+    h += `<div class="stats" style="margin-top:12px"><div><b>${items.length}</b><span>spend${items.length === 1 ? '' : 's'}</span></div>
+      <div><b>${days}</b><span>day${days === 1 ? '' : 's'}</span></div><div><b>${money(perDay)}</b><span>a day</span></div></div>`;
+    const cats = CATS.map(([c, ic]) => ({ c, ic, s: sum(items.filter(e => e.category === c)) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+    if (cats.length) h += cats.slice(0, 4).map(x => `<div class="bar-row"><div class="ico">${icon(x.ic)}</div><span>${x.c}</span><div class="bar"><div style="width:${x.s / cats[0].s * 100}%"></div></div><b>${money(x.s)}</b></div>`).join('');
+    const owe = UDHAAR ? db.loans.filter(l => l.event === v.id && l.type === 'gave' && isOpen(l)) : [];
+    if (owe.length) {
+      const names = [...new Set(owe.map(l => l.person.trim()))];
+      h += `<div class="tip" data-go="udhaar" style="cursor:pointer">${icon('users')}<span>${esc(listNames(names.length > 3 ? [...names.slice(0, 3), 'others'] : names))} still owe${names.length === 1 ? 's' : ''} you <b>${money(sum(owe.map(l => ({ amount: leftOf(l) }))))}</b></span></div>`;
+    }
+  }
+  return h + '</div>';
+}
+let evId = null;
+function openEventForm(v) {
+  evId = v ? v.id : null;
+  $('#evTitle').textContent = v ? 'Edit trip or event' : 'New trip or event';
+  $('#evName').value = v ? v.name : '';
+  $('#evStart').value = v ? v.start : today();
+  $('#evEnd').value = v ? v.end : addDays(2);
+  $('#evBudget').value = v && v.budget ? v.budget : '';
+  $('#evDelete').style.display = v ? '' : 'none';
+  openSheet($('#eventSheet'));
+}
+function saveEvent() {
+  const name = $('#evName').value.trim(), start = $('#evStart').value, end = $('#evEnd').value;
+  if (!name) { toast('Give it a name, e.g. Goa trip'); $('#evName').focus(); return; }
+  if (!start || !end) return toast('Pick the dates');
+  if (end < start) return toast('The end date is before the start date');
+  const b = calc(cleanAmount($('#evBudget').value));
+  const old = evId && evById(evId);
+  const v = old || { id: uid(), createdAt: Date.now() };
+  Object.assign(v, { name, start, end, budget: isFinite(b) && b > 0 ? round2(b) : 0 });
+  if (!old) db.events.push(v);
+  save(); closeSheets();
+  tab = 'history'; histEvent = v.id; histMode = 'All'; render(); window.scrollTo(0, 0);
+  // spends already logged in these dates: offer to move them in (one could be rent, so ask)
+  const loose = db.expenses.filter(e => !e.event && e.date >= start && e.date <= end);
+  if (!loose.length) return toast(old ? 'Updated' : `${name} is ready. Spends you add in these dates join it on their own.`);
+  setTimeout(async () => {
+    if (!(await ask(`Add the ${loose.length} spend${loose.length === 1 ? '' : 's'} already logged in these dates to ${name}? You can untag any of them later.`, 'Add them', 'primary'))) return;
+    loose.forEach(e => { e.event = v.id; });
+    save(); render(); toast(`Added ${loose.length} to ${name}`);
+  }, 300);
+}
+async function deleteEvent() {
+  const v = evById(evId); if (!v) return;
+  const n = evItems(v.id).length;
+  if (!(await ask(`Delete ${v.name}?${n ? ` Its ${n} spend${n === 1 ? '' : 's'} stay, just without the tag.` : ''}`, 'Delete'))) return;
+  db.expenses.forEach(e => { if (e.event === v.id) delete e.event; });
+  db.loans.forEach(l => { if (l.event === v.id) delete l.event; });
+  db.events = db.events.filter(x => x !== v);
+  if (histEvent === v.id) histEvent = null;
+  save(); closeSheets(); render(); toast('Deleted');
 }
 
 // ---------- udhaar helpers ----------
@@ -930,7 +1073,8 @@ function learnPayee(p, title, category) {
 function acceptPending(id, quiet) {
   const p = db.pending.find(x => x.id === id);
   if (!p) return;
-  db.expenses.push({ id: uid(), title: p.title, amount: p.amount, mode: p.mode, category: p.category, date: p.date, note: 'From SMS', createdAt: p.at || Date.now() });
+  const ev = eventFor(p.date);
+  db.expenses.push({ id: uid(), title: p.title, amount: p.amount, mode: p.mode, category: p.category, date: p.date, note: 'From SMS', createdAt: p.at || Date.now(), ...(ev ? { event: ev.id } : {}) });
   learnPayee(p, p.title, p.category);
   db.pending = db.pending.filter(x => x.id !== id);
   save();
@@ -945,7 +1089,7 @@ function ignorePending(id) {
 
 // ---------- dashboard ----------
 function quip(items) {
-  const t = today(), total = sum(items);
+  const t = today(), total = sum(items.filter(e => !e.event)); // trips & events don't count against the budget
   if (db.budget > 0 && viewMonth === t.slice(0, 7)) {
     const left = round2(db.budget - total);
     const [y, m] = viewMonth.split('-').map(Number);
@@ -988,24 +1132,32 @@ function renderHome() {
     </div>`;
   }
 
+  // 1a. A trip / event happening right now (only while it runs, so Home stays calm otherwise)
+  if (isCur) db.events.filter(v => v.start <= t && t <= v.end).forEach(v => { h += eventCard(v, false); });
+
   // 1b. Spends found in SMS, waiting for a tap
   h += pendingCard();
 
-  // 2. Budget: always shown, with days left in the month
+  // 2. Budget: always shown, with days left in the month. Trip / event spends stay out of it.
+  const everyday = sum(items.filter(e => !e.event)), evSpend = round2(total - everyday);
+  const evNames = [...new Set(items.filter(e => e.event).map(e => evName(e.event)).filter(Boolean))];
+  const evLabel = evNames.length === 1 ? evNames[0] : 'trips and events';
   h += `<div class="card"><div class="card-head"><span class="label">${monthName} budget</span>
     <button class="link-btn" data-budget>${db.budget > 0 ? 'Edit' : ''}</button></div>`;
   if (db.budget > 0) {
-    const left = round2(db.budget - total), pct = Math.min(100, total / db.budget * 100);
+    const left = round2(db.budget - everyday), pct = Math.min(100, everyday / db.budget * 100);
     const color = left < 0 ? 'var(--coral)' : pct >= 80 ? 'var(--warn)' : 'var(--pm)';
     h += `<div class="big ${left < 0 ? 'over' : ''}">${left < 0 ? `${money(-left)} over` : `${money(left)} left`}</div>
       <div class="progress"><div style="width:${pct}%;background:${color}"></div></div>
-      <div class="stats"><div><b>${money(total)}</b><span>Spent</span></div><div><b>${money(db.budget)}</b><span>Budget</span></div>
+      <div class="stats"><div><b>${money(everyday)}</b><span>Spent</span></div><div><b>${money(db.budget)}</b><span>Budget</span></div>
         <div><b>${isCur ? daysLeft : 0}</b><span>${isCur ? `day${daysLeft === 1 ? '' : 's'} left` : 'Month over'}</span></div></div>`;
     if (isCur && left > 0) h += `<div class="tip">${icon('wallet')}<span>You can spend about <b>${money(Math.floor(left / daysLeft))}</b> a day till ${daysInMonth} ${monthName.slice(0, 3)}.</span></div>`;
     if (isCur && left <= 0) h += `<div class="tip" style="background:rgba(229,72,77,.1)">${icon('bell')}<span>${esc(line('overBudget', { over: money(-left) }))}</span></div>`;
+    if (evSpend > 0) h += `<div class="tip">${icon('event')}<span><b>${money(evSpend)}</b> on ${esc(evLabel)} is kept out of this budget.</span></div>`;
   } else {
     h += `<div class="big">${money(total)}</div>
       <div class="sub">spent so far${isCur ? ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left in ${monthName}` : ''}</div>
+      ${evSpend > 0 ? `<div class="sub">${money(everyday)} everyday + ${money(evSpend)} ${esc(evLabel)}</div>` : ''}
       <button class="btn ghost" data-budget style="width:100%;margin-top:12px">${icon('wallet')}Set a monthly budget</button>`;
   }
   h += '</div>';
@@ -1042,18 +1194,25 @@ function renderHome() {
 
 // ---------- history ----------
 function renderHistory() {
-  const month = monthItems();
+  if (histEvent && !evById(histEvent)) histEvent = null;
+  const ev = histEvent && evById(histEvent);
+  const month = ev ? evItems(ev.id) : monthItems(); // one trip / event, or the month
   // payment-mode filters double as the Cash / Card / UPI split for the month
   $('#histModes').innerHTML = ['All', ...MODES.map(m => m.id)].map(m => {
     const s = sum(m === 'All' ? month : month.filter(e => e.mode === m));
     return `<button class="chip ${histMode === m ? 'on' : ''}" data-hmode="${m}">${m === 'All' ? 'All' : modeIcon(m) + m} <small>${money(s)}</small></button>`;
   }).join('');
+  $('#histEvents').innerHTML = [...db.events].sort((a, b) => b.start.localeCompare(a.start))
+    .map(v => `<button class="chip ${histEvent === v.id ? 'on' : ''}" data-hevent="${v.id}">${icon('event')}${esc(v.name)}${histEvent === v.id ? icon('x') : ''}</button>`).join('') +
+    `<button class="chip add" data-evnew>${icon('plus')}Trip or event</button>`;
   const q = $('#search').value.trim().toLowerCase();
   const items = month.filter(e =>
     (histMode === 'All' || e.mode === histMode) &&
     (!q || `${e.title} ${e.note} ${e.category}`.toLowerCase().includes(q)));
+  const head = ev ? eventCard(ev, true) : '';
   if (!items.length) {
-    $('#histList').innerHTML = `<div class="card empty">${emptyIcon('search')}Nothing found for ${monthLabel(viewMonth)}.</div>`;
+    $('#histList').innerHTML = head + `<div class="card empty">${emptyIcon(ev ? 'event' : 'search')}${ev && !month.length
+      ? `<b>Nothing in ${esc(ev.name)} yet.</b><br>Spends you add for ${evDates(ev)} join it on their own.` : `Nothing found${ev ? '' : ` for ${monthLabel(viewMonth)}`}.`}</div>`;
     return;
   }
   const groups = [];
@@ -1061,10 +1220,10 @@ function renderHistory() {
     const g = groups[groups.length - 1];
     if (g && g.date === e.date) g.items.push(e); else groups.push({ date: e.date, items: [e] });
   });
-  $('#histList').innerHTML =
-    `<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="label">${items.length} shown</span><b>${money(sum(items))}</b></div>` +
+  $('#histList').innerHTML = head +
+    (!ev || items.length < month.length ? `<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="label">${items.length} shown</span><b>${money(sum(items))}</b></div>` : '') +
     groups.map(g => `<div class="day-head"><span>${dayLabel(g.date)}</span><span>${money(sum(g.items))}</span></div>
-      <div class="card" style="padding:4px 16px">${g.items.map(e => itemHTML(e, false)).join('')}</div>`).join('');
+      <div class="card" style="padding:4px 16px">${g.items.map(e => itemHTML(e, false, !!ev)).join('')}</div>`).join('');
 }
 
 // ---------- udhaar tab ----------
@@ -1131,7 +1290,7 @@ function renderUdhaar() {
 
 function render() {
   $('#monthLabel').textContent = monthLabel(viewMonth);
-  $('#monthBar').hidden = tab === 'udhaar';
+  $('#monthBar').hidden = tab === 'udhaar' || (tab === 'history' && !!histEvent);
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
   document.querySelectorAll('.nav-btn[data-go]').forEach(b => b.classList.toggle('active', b.dataset.go === tab));
   $('#btnAdd').setAttribute('aria-label', UDHAAR && tab === 'udhaar' ? 'Add udhaar' : 'Add expense');
@@ -1164,7 +1323,7 @@ function openMenu(e) {
   $('#menuIco').innerHTML = catIcon(e.category);
   $('#menuTitle').textContent = e.title;
   $('#menuAmt').textContent = money(e.amount);
-  $('#menuMeta').innerHTML = [dayLabel(e.date), `${modeIcon(e.mode)} ${e.mode}`, e.category].join(' · ');
+  $('#menuMeta').innerHTML = [dayLabel(e.date), `${modeIcon(e.mode)} ${e.mode}`, e.category, e.event && evName(e.event) ? `${icon('event', 'mode-ic')} ${esc(evName(e.event))}` : ''].filter(Boolean).join(' · ');
   $('#menuNote').textContent = e.note || '';
   $('#menuNote').hidden = !e.note;
   openSheet($('#itemMenu'));
@@ -1189,22 +1348,49 @@ function openForm(e, swap, preset) {
   $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
   $('#btnDelete').style.display = e ? '' : 'none';
   $('#fAmount').value = form.expr;
-  form.split = 2; $('#fSplit').checked = false; // heading starts blank: no suggestions (Shyamal's call)
+  form.split = 2; form.names = []; $('#fSplit').checked = false; $('#splitName').value = ''; // heading starts blank: no suggestions (Shyamal's call)
+  // trip / event: new spends dated inside one are tagged with it until the user untags them
+  form.event = e ? e.event || '' : ((eventFor($('#fDate').value) || {}).id || '');
+  form.evTouched = !!e;
   renderPickers(); updateAmount();
   if (swap) swapSheet($('#sheet')); else openSheet($('#sheet'));
 }
 function renderPickers() {
   $('#fMode').innerHTML = segHTML('fMode', modeOptions, form.mode);
   $('#fCat').innerHTML = CATS.map(([c, ic]) => `<button class="chip ${form.category === c ? 'on' : ''}" data-cat="${c}">${icon(ic)}${c}</button>`).join('');
+  // events near this date (a month either side), the tagged one first
+  const d = $('#fDate').value || today();
+  const evs = db.events.filter(v => v.id === form.event || (dayDiff(v.end, d) <= 30 && dayDiff(d, v.start) <= 30))
+    .sort((a, b) => (b.id === form.event) - (a.id === form.event) || b.start.localeCompare(a.start)).slice(0, 4);
+  $('#fEventWrap').hidden = !evs.length;
+  $('#fEvent').innerHTML = evs.map(v => `<button class="chip ${form.event === v.id ? 'on' : ''}" data-fev="${v.id}">${icon('event')}${esc(v.name)}${form.event === v.id ? icon('x') : ''}</button>`).join('');
 }
-// Split this bill (expenses only): the saved amount is your share of the total.
+// Split this bill (expenses only): the saved amount is your share of the total. Friends named
+// here each get an udhaar entry for their share, with a reminder.
 function renderSplit() {
   const on = $('#fSplit').checked;
   $('#splitBox').hidden = !on;
   if (!on) return;
   $('#splitN').textContent = form.split;
   const total = round2(calc(form.expr));
-  $('#splitShare').textContent = isFinite(total) && total > 0 ? money(round2(total / form.split)) : '₹0';
+  const share = isFinite(total) && total > 0 ? money(round2(total / form.split)) : '₹0';
+  $('#splitShare').textContent = share;
+  const q = personKey($('#splitName').value);
+  const known = UDHAAR ? people().filter(p => !db.hiddenNames.includes(p.key) && !form.names.some(n => personKey(n) === p.key) && (!q || p.key.includes(q))).slice(0, 5) : [];
+  $('#splitNames').innerHTML = form.names.map((n, i) => `<span class="chip on pchip"><span class="pn">${esc(n)}</span><button class="chip-x" data-snx="${i}" aria-label="Remove ${esc(n)}">${icon('x')}</button></span>`).join('') +
+    known.map(p => `<button class="chip" data-snadd="${esc(p.name)}">${icon('plus')}${esc(p.name)}</button>`).join('');
+  $('#splitNames').hidden = !form.names.length && !known.length;
+  $('#splitOwe').hidden = !form.names.length;
+  $('#splitOwe').innerHTML = form.names.length ? `${icon('users', 'mode-ic')} ${esc(listNames(form.names))} will ${form.names.length === 1 ? 'owe' : 'each owe'} you <b>${share}</b>. Goes to Udhaar with a reminder.` : '';
+}
+function addSplitName(raw) {
+  const n = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+  $('#splitName').value = '';
+  if (n && !form.names.some(x => personKey(x) === personKey(n)) && form.names.length < 19) {
+    form.names.push(n);
+    form.split = Math.max(form.split, form.names.length + 1); // you + everyone named
+  }
+  renderSplit();
 }
 // Amount field: typed with the phone's keyboard. Sums still work if typed ("120+45" shows "= ₹165").
 const cleanAmount = v => String(v || '').replace(/[,\s₹]/g, '').replace(/\*/g, '×').replace(/\//g, '÷');
@@ -1224,16 +1410,26 @@ function saveForm() {
   if (!title) { toast('Add a heading'); $('#fTitle').focus(); return; }
   if (!isFinite(total) || total <= 0) { toast('Enter an amount'); $('#fAmount').focus(); return; }
   const split = $('#fSplit').checked ? form.split : 1;
+  if (split > 1 && $('#splitName').value.trim()) addSplitName($('#splitName').value); // typed but not added yet
+  const names = split > 1 ? form.names : [];
   const amount = round2(total / split); // split bill: only your share counts as your spend
   const old = form.id && db.expenses.find(x => x.id === form.id);
   const first = !db.expenses.some(e => !String(e.id).startsWith('demo'));
   const rec = {
     id: form.id || uid(), title, amount, mode: form.mode, category: form.category,
     date: $('#fDate').value || today(),
-    note: [split > 1 ? `Split ${split} ways, total ${money(total)}` : '', $('#fNote').value.trim()].filter(Boolean).join(' · '),
+    note: [split > 1 ? `Split ${split} ways, total ${money(total)}` : '', names.length ? `with ${names.join(', ')}` : '', $('#fNote').value.trim()].filter(Boolean).join(' · '),
     createdAt: old ? old.createdAt : Date.now(),
   };
+  if (form.event && evById(form.event)) rec.event = form.event;
   if (old) db.expenses[db.expenses.indexOf(old)] = rec; else db.expenses.push(rec);
+  // split with named friends: each owes you their share, as udhaar with a reminder in a week
+  const remindOn = addDays(7);
+  names.forEach(n => db.loans.push({
+    id: uid(), person: n, type: 'gave', amount, mode: form.mode, date: rec.date, remindOn, note: `Split: ${title}`,
+    payments: [], writtenOff: false, createdAt: Date.now(), ...(rec.event ? { event: rec.event } : {}),
+  }));
+  if (names.length) db.hiddenNames = db.hiddenNames.filter(k => !names.some(n => personKey(n) === k));
   db.lastMode = form.mode;
   const fromSms = form.pendingId && db.pending.find(x => x.id === form.pendingId);
   if (fromSms) { // reviewed SMS spend: remember the user's heading/category for this payee
@@ -1247,7 +1443,20 @@ function saveForm() {
   viewMonth = rec.date.slice(0, 7);
   render();
   const todayTotal = sum(db.expenses.filter(e => e.date === today()));
-  toast(old ? 'Updated' : first ? line('firstSave') : `Saved ${money(amount)}. Today: ${money(todayTotal)}.`);
+  const ev = rec.event && evById(rec.event);
+  toast(old ? 'Updated' : first ? line('firstSave') : ev ? `Saved ${money(amount)} to ${ev.name}. ${money(sum(evItems(ev.id)))} so far.` : `Saved ${money(amount)}. Today: ${money(todayTotal)}.`);
+  if (names.length) { syncNotifications(); setTimeout(() => splitDone(rec, total, split, names), 350); }
+}
+// After a split with named friends: offer the whole split as one WhatsApp message (pick the group there)
+function splitDone(rec, total, split, names) {
+  const share = money(rec.amount);
+  const msg = `${rec.title}: ${money(total)} split ${split} ways, ${share} each.\n` +
+    names.map(n => `${n}: ${share}`).join('\n') + '\nPlease send yours when you can 🙂';
+  dialog({
+    title: 'Split saved',
+    body: `<p><b>${esc(listNames(names))}</b> ${names.length === 1 ? 'owes' : 'each owe'} you <b>${share}</b>. It's in Udhaar, with a reminder on ${shortDate(addDays(7))}.</p><p>Send the split to your group on WhatsApp?</p>`,
+    actions: [{ label: 'Later', kind: 'ghost' }, { label: `${icon('chat')}Send to group`, kind: 'wa', fn: () => openExternal('https://wa.me/?text=' + encodeURIComponent(msg)) }],
+  });
 }
 async function deleteCurrent() {
   if (!form.id || !(await ask('Delete this expense?', 'Delete'))) return;
@@ -1526,8 +1735,8 @@ async function download(name, text, type) {
 function exportCsv() {
   if (!db.expenses.length) return toast('No data yet');
   const q = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
-  const rows = [['Date', 'Heading', 'Amount', 'Mode', 'Category', 'Note']]
-    .concat([...db.expenses].sort(byNewest).map(e => [e.date, e.title, e.amount, e.mode, e.category, e.note]));
+  const rows = [['Date', 'Heading', 'Amount', 'Mode', 'Category', 'Note', 'Trip or event']]
+    .concat([...db.expenses].sort(byNewest).map(e => [e.date, e.title, e.amount, e.mode, e.category, e.note, e.event ? evName(e.event) : '']));
   download(`pocket-money-${today()}.csv`, '﻿' + rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv');
 }
 // Bring a backup in. Empty phone (fresh install): take the whole backup, settings included.
@@ -1552,6 +1761,9 @@ function applyBackup(d) {
   });
   (Array.isArray(d.loans) ? d.loans : []).forEach(l => {
     if (l && l.id && l.person && l.amount > 0 && !lids.has(l.id)) { db.loans.push({ payments: [], note: '', remindOn: '', writtenOff: false, ...l }); added++; }
+  });
+  (Array.isArray(d.events) ? d.events : []).forEach(v => {
+    if (v && v.id && v.name && v.start && v.end && !db.events.some(x => x.id === v.id)) db.events.push({ budget: 0, ...v });
   });
   if (!db.budget && d.budget) db.budget = d.budget;
   Object.keys(d.contacts || {}).forEach(k => { if (!db.contacts[k]) db.contacts[k] = d.contacts[k]; });
@@ -1725,20 +1937,32 @@ $('#payFull').onclick = () => { const l = db.loans.find(x => x.id === loanId); i
 $('#lPerson').oninput = renderLoanForm;
 $('#search').oninput = renderHistory;
 $('#fSplit').onchange = () => { form.split = form.split || 2; renderSplit(); };
+$('#splitAdd').onclick = () => addSplitName($('#splitName').value);
+$('#splitName').oninput = renderSplit;
+$('#fDate').onchange = () => { if (!form.evTouched) form.event = (eventFor($('#fDate').value) || {}).id || ''; renderPickers(); };
+$('#evSave').onclick = saveEvent;
+$('#evDelete').onclick = deleteEvent;
 
 $('#fAmount').oninput = updateAmount;
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link],[data-set],[data-info],[data-pdel]');
+  const el = e.target.closest('[data-close],[data-go],[data-id],[data-seg],[data-cat],[data-split],[data-hmode],[data-wa],[data-person],[data-loan],[data-lact],[data-remind],[data-pname],[data-addfor],[data-budget],[data-pok],[data-pno],[data-pedit],[data-pall],[data-link],[data-set],[data-info],[data-pdel],[data-event],[data-hevent],[data-evnew],[data-evedit],[data-fev],[data-snx],[data-snadd]');
   if (!el) return;
   const d = el.dataset;
-  if (d.pok) acceptPending(d.pok);
+  if (d.event) { tab = 'history'; histEvent = d.event; histMode = 'All'; render(); window.scrollTo(0, 0); }
+  else if (d.hevent) { histEvent = histEvent === d.hevent ? null : d.hevent; histMode = 'All'; render(); window.scrollTo(0, 0); }
+  else if ('evnew' in d) openEventForm(null);
+  else if (d.evedit) { const v = evById(d.evedit); if (v) openEventForm(v); }
+  else if (d.fev) { form.event = form.event === d.fev ? '' : d.fev; form.evTouched = true; renderPickers(); }
+  else if (d.snx) { form.names.splice(Number(d.snx), 1); renderSplit(); }
+  else if (d.snadd) addSplitName(d.snadd);
+  else if (d.pok) acceptPending(d.pok);
   else if (d.pno) ignorePending(d.pno);
   else if ('pall' in d) { const n = db.pending.length; [...db.pending].forEach(p => acceptPending(p.id, true)); render(); toast(`Added ${n} spend${n === 1 ? '' : 's'} from SMS`); }
   else if (d.pedit) { const p = db.pending.find(x => x.id === d.pedit); if (p) openForm(null, false, { ...p, pendingId: p.id }); }
   else if (d.link) linkContact(d.link);
   else if ('close' in d) closeSheets();
-  else if (d.go) { tab = d.go; render(); window.scrollTo(0, 0); }
+  else if (d.go) { tab = d.go; histEvent = null; render(); window.scrollTo(0, 0); }
   else if (d.id) { const x = db.expenses.find(v => v.id === d.id); if (x) openMenu(x); }
   else if (d.seg) {
     if (d.seg === 'fMode') { form.mode = d.val; renderPickers(); }
@@ -1762,14 +1986,14 @@ document.addEventListener('click', e => {
   else if ('budget' in d) openSetting('budget');
   else if (d.set) openSetting(d.set);
   else if (d.info) dialog({ title: INFO[d.info][0], body: INFO[d.info][1] });
-  else if (d.split) { form.split = Math.min(20, Math.max(2, (form.split || 2) + Number(d.split))); renderSplit(); }
+  else if (d.split) { form.split = Math.min(20, Math.max(2, form.names.length + 1, (form.split || 2) + Number(d.split))); renderSplit(); }
 });
 
 // Enter / Done on the keyboard saves; Escape closes (laptop)
 document.addEventListener('keydown', e => {
   if ($('#sheet').classList.contains('hidden')) return;
   if (e.key === 'Escape') return closeSheets();
-  if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); saveForm(); }
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); if (e.target.id === 'splitName') addSplitName(e.target.value); else saveForm(); }
 });
 
 const THEMES = [['system', 'System default'], ['light', 'Light'], ['dark', 'Dark']];
@@ -1995,7 +2219,7 @@ $('#fileRestore').onchange = e => { if (e.target.files[0]) restore(e.target.file
 $('#btnWipe').onclick = async () => {
   if (!db.expenses.length && !db.loans.length) return toast('Nothing to delete');
   if (!(await ask(`Delete all ${db.expenses.length} expenses and ${db.loans.length} udhaar entries? Download a backup first if unsure.`, 'Delete all'))) return;
-  db.expenses = []; db.loans = []; save(); closeSheets(); render(); syncNotifications(); toast('All data deleted');
+  db.expenses = []; db.loans = []; db.events = []; histEvent = null; save(); closeSheets(); render(); syncNotifications(); toast('All data deleted');
 };
 
 // Theme, like WhatsApp: System default follows the phone; Light / Dark override it.
@@ -2071,6 +2295,8 @@ splash(() => {
   if (/[?&]open=add/.test(location.search)) openForm(null); // for screenshots
   if (/[?&]open=settings/.test(location.search)) $('#btnSettings').click();
   if (/[?&]open=loan/.test(location.search)) openLoanForm(null);
+  if (/[?&]open=newevent/.test(location.search)) openEventForm(null);
+  if (/[?&]open=trip/.test(location.search) && db.events[0]) { tab = 'history'; histEvent = db.events[0].id; render(); }
   if (/[?&]open=info/.test(location.search)) { $('#btnSettings').click(); dialog({ title: INFO.sms[0], body: INFO.sms[1] }); }
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }

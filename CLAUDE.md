@@ -8,6 +8,10 @@ UI rules (his calls, 2.4.1): amounts use a normal input with the **phone's own k
 
 Add-expense screen (his calls, 2.3): the heading starts **blank, with no suggestions or recent entries**, even for repeat spends; the amount prompt is just "Tap to enter amount"; a plain "Split this bill" tick with − / + people saves only your share (note "Split N ways, total ₹X"). Split is for expenses only, never Udhaar.
 
+Split → money back (2.7): inside the split box, an optional "Who owes you?" field (plus chips of known udhaar friends). Each named friend becomes an udhaar "I gave" entry for their share (note "Split: <heading>", reminder in 7 days, `event` copied from the expense). People can't go below you + the named friends. After saving, a "Split saved" pop-up offers **Send to group**: `wa.me/?text=` with everyone's share (no number, so WhatsApp asks which chat/group). Equal shares, "I paid" only.
+
+Trips & events (2.7): `db.events` = `{ id, name, start, end, budget, createdAt }`; an expense in one has an optional `event: id` (loans from a split too). New spends dated inside an event are tagged automatically (`eventFor(date)`, also SMS spends on accept); the add screen shows a "Trip or event" chip, tap it to untag; changing the date re-tags until the user touches the chip. Event spends still count as money spent (Today, History, Where it went) but are **kept out of the monthly budget** and its per-day figure; the budget card says so. Home shows an event card **only while it runs**. History has an event chip row + "+ Trip or event"; tapping an event shows all its spends (any month, month bar hidden) with stats, categories, budget and who still owes for it. Creating an event over past days asks before tagging spends already logged. Deleting one keeps its spends, untagged. Category "Stay" (hotels) was added for trips. CSV has a "Trip or event" column; backups merge events by id.
+
 Dashboard is deliberately minimal (testers said it showed too much): Today card, Budget card (always shown, with days left and a safe per-day amount, or a "Set a monthly budget" button), due Udhaar reminders, Where it went (top 4 categories), Recent (4). The Cash/Card/UPI split lives on the History filter chips. Don't add blocks back to the dashboard without asking.
 
 ## How it ships
@@ -32,7 +36,7 @@ Dashboard is deliberately minimal (testers said it showed too much): Today card,
 
 - Keep `index.html` a complete document ending in `</html>` and keep `id="tab-home"`: the loader rejects downloads without them.
 - Keep the line that sets `localStorage['kharcha.boot'] = 'ok'` after the first render, or the loader treats the version as crashed.
-- Never rename the storage key, the Android app ID `com.shyamal.kharcha`, or the record shapes without migrating old data. Expense: `id, title, amount, mode, category, date YYYY-MM-DD, note, createdAt`. Udhaar (`db.loans`): `id, person, type gave|took, amount, mode, date, remindOn, note, payments[{id, amount, date, mode}], writtenOff, createdAt`. Losing his records is the worst possible bug.
+- Never rename the storage key, the Android app ID `com.shyamal.kharcha`, or the record shapes without migrating old data. Expense: `id, title, amount, mode, category, date YYYY-MM-DD, note, createdAt`, optional `event`. Udhaar (`db.loans`): `id, person, type gave|took, amount, mode, date, remindOn, note, payments[{id, amount, date, mode}], writtenOff, createdAt`, optional `event`. Events (`db.events`): `id, name, start, end, budget, createdAt`. Losing his records is the worst possible bug.
 - New files in `assets/` are not inside already-installed APKs: images need the `onerror` fallback to the GitHub Pages URL (see the logo `<img>` tags), fonts fall back to the system font.
 - No `alert` / `confirm` / `prompt`: use the in-app `ask()` dialog.
 - Native features go through `Capacitor.Plugins` and must be guarded by the `native` flag, because the same file runs in a normal browser too.
@@ -43,5 +47,5 @@ Dashboard is deliberately minimal (testers said it showed too much): Today card,
 ## Test before pushing
 
 - `node tools/serve.js`, then open http://localhost:5173/tools/phone.html: the app in a phone frame with sample data, plus Restart app / Fresh install (onboarding) / dark mode buttons.
-- Test-only URL switches: `?demo=1` (sample data), `?fresh=1` (new install, onboarding), `?tab=home|history|udhaar`, `?open=add`.
+- Test-only URL switches: `?demo=1` (sample data, includes a running "Goa trip"), `?fresh=1` (new install, onboarding), `?tab=home|history|udhaar`, `?open=add|settings|loan|newevent|trip`.
 - Shyamal checks the laptop preview first; push to `main` only after he approves.
