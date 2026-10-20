@@ -7,8 +7,8 @@
 <meta name="description" content="Pocket Money: know where your money goes. Log a spend in seconds, track udhaar with friends.">
 <title>Pocket Money</title>
 <!-- Bump on every release: shown in the "new version" pop-up -->
-<meta name="pm-version" content="2.7">
-<meta name="pm-notes" content="Trips and events: big one-off spends stay out of your monthly budget. Split a bill and friends land in Udhaar.">
+<meta name="pm-version" content="2.8">
+<meta name="pm-notes" content="Pocket Money now speaks हिन्दी, ગુજરાતી and मराठी. Change it in Settings → Language.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -187,6 +187,9 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 .big small.of{font-size:15px;font-weight:600;color:var(--muted);letter-spacing:0}
 .row2.even{grid-template-columns:1fr 1fr}
 .date-lbl{font-size:12px;font-weight:600;color:var(--muted);display:grid;gap:4px}
+/* languages: first intro screen offers them; Devanagari / Gujarati fall back to the phone's own font */
+.onb-langs{justify-content:center;margin:0 0 4px}
+:root:not([lang="en"]) .nav-btn{font-size:11px}
 .section-title{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.06em}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:6px 0}
 .seg button{padding:11px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -506,6 +509,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
     </div>
     <div class="section-title">General</div>
     <div class="set-group">
+      <button class="set-row" data-set="lang"><span data-ic="globe"></span><span class="lbl">Language</span><span class="val" id="valLang"></span><span class="chev" data-ic="right"></span></button>
       <button class="set-row" data-set="theme"><span data-ic="moon"></span><span class="lbl">Theme</span><span class="val" id="valTheme"></span><span class="chev" data-ic="right"></span></button>
       <button class="set-row" data-set="budget"><span data-ic="wallet"></span><span class="lbl">Monthly budget</span><span class="val" id="valBudget"></span><span class="chev" data-ic="right"></span></button>
       <div class="set-row" id="lockRow"><span data-ic="lock"></span><span class="lbl">App lock</span><button class="info" data-info="lock" aria-label="About app lock" data-ic="info"></button><label class="switch"><input type="checkbox" id="lockOn" aria-label="App lock"><span></span></label></div>
@@ -573,8 +577,437 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 <div id="toast"></div>
 
 <script>
+// Translations: English text -> हिन्दी / ગુજરાતી / मराठी. A missing entry simply shows the English.
+// One row per English text: [English, Hindi, Gujarati, Marathi]. Keep {placeholders} exactly as they are.
+// New English text in the app? Add a row here (the test bench lists anything missing).
+const TR_ROWS = [
+  [` and `, ` और `, ` અને `, ` आणि `],
+  [`+ {n} more after these`, `इनके बाद {n} और`, `આના પછી {n} વધુ`, `यानंतर आणखी {n}`],
+  [`1 day left in {month}`, `{month} में 1 दिन बाकी`, `{month}માં 1 દિવસ બાકી`, `{month} मध्ये 1 दिवस बाकी`],
+  [`<p>A copy of your data is saved in a <b>hidden Pocket Money folder in your own Google Drive</b>, a few seconds after every change.</p><p>Pocket Money can only see that folder: not your files, Gmail or contacts.</p><p>New phone or reinstalled the app? Choose <b>Restore from Google Drive</b>.</p>`,
+    `<p>आपके डेटा की एक कॉपी <b>आपकी अपनी Google Drive के एक छिपे हुए Pocket Money फ़ोल्डर</b> में सेव होती है, हर बदलाव के कुछ सेकंड बाद।</p><p>Pocket Money सिर्फ़ वही फ़ोल्डर देख सकता है: आपकी फ़ाइलें, Gmail या कॉन्टैक्ट्स नहीं।</p><p>नया फ़ोन या ऐप दोबारा इंस्टॉल किया? <b>Google Drive से वापस लाएँ</b> चुनें।</p>`,
+    `<p>તમારા ડેટાની એક કૉપી <b>તમારી પોતાની Google Driveના એક છુપા Pocket Money ફોલ્ડરમાં</b> સેવ થાય છે, દરેક ફેરફારની થોડી સેકન્ડ પછી.</p><p>Pocket Money ફક્ત એ જ ફોલ્ડર જોઈ શકે છે: તમારી ફાઇલો, Gmail કે કોન્ટેક્ટ્સ નહીં.</p><p>નવો ફોન કે ઍપ ફરી ઇન્સ્ટોલ કરી? <b>Google Driveમાંથી પાછું લાવો</b> પસંદ કરો.</p>`,
+    `<p>तुमच्या डेटाची एक कॉपी <b>तुमच्या स्वतःच्या Google Drive मधील एका लपलेल्या Pocket Money फोल्डरमध्ये</b> सेव्ह होते, प्रत्येक बदलानंतर काही सेकंदांत.</p><p>Pocket Money फक्त तो फोल्डर पाहू शकतो: तुमच्या फाइल्स, Gmail किंवा कॉन्टॅक्ट्स नाही.</p><p>नवा फोन किंवा ॲप पुन्हा इन्स्टॉल केले? <b>Google Drive मधून परत आणा</b> निवडा.</p>`],
+  [`<p>Every evening at <b>9 PM</b> you get a gentle nudge to log the day's spends.</p><p>Turn it off here anytime.</p>`,
+    `<p>हर शाम <b>9 बजे</b> दिन के खर्च लिखने की एक हल्की-सी याद आती है।</p><p>इसे यहाँ कभी भी बंद करें।</p>`,
+    `<p>દરરોજ સાંજે <b>9 વાગ્યે</b> દિવસના ખર્ચ લખવાની હળવી યાદ આવે છે.</p><p>તેને અહીંથી ગમે ત્યારે બંધ કરો.</p>`,
+    `<p>दररोज संध्याकाळी <b>9 वाजता</b> दिवसाचे खर्च लिहिण्याची हलकी आठवण येते.</p><p>हे इथून कधीही बंद करा.</p>`],
+  [`<p>Pocket Money asks for your <b>fingerprint, face or phone PIN</b> when you open it, and again if you come back after more than 30 seconds away.</p><p>Android does the check. The app never sees your fingerprint or PIN.</p>`,
+    `<p>Pocket Money खोलते समय आपका <b>फ़िंगरप्रिंट, चेहरा या फ़ोन PIN</b> माँगता है, और 30 सेकंड से ज़्यादा बाहर रहकर लौटने पर फिर से।</p><p>जाँच Android करता है। ऐप आपका फ़िंगरप्रिंट या PIN कभी नहीं देखता।</p>`,
+    `<p>Pocket Money ખોલતી વખતે તમારી <b>ફિંગરપ્રિન્ટ, ચહેરો કે ફોન PIN</b> માંગે છે, અને 30 સેકન્ડથી વધુ બહાર રહીને પાછા આવો ત્યારે ફરીથી.</p><p>ચકાસણી Android કરે છે. ઍપ તમારી ફિંગરપ્રિન્ટ કે PIN ક્યારેય જોતી નથી.</p>`,
+    `<p>Pocket Money उघडताना तुमचा <b>फिंगरप्रिंट, चेहरा किंवा फोन PIN</b> विचारतो, आणि 30 सेकंदांपेक्षा जास्त बाहेर राहून परत आल्यावर पुन्हा.</p><p>तपासणी Android करते. ॲप तुमचा फिंगरप्रिंट किंवा PIN कधीच पाहत नाही.</p>`],
+  [`<p>Pocket Money keeps everything <b>on this phone</b>. With Google Drive backup on, a copy also goes to <b>your own</b> Google Drive. No one else gets it.</p>`,
+    `<p>Pocket Money सब कुछ <b>इसी फ़ोन पर</b> रखता है। Google Drive बैकअप चालू हो तो एक कॉपी <b>आपकी अपनी</b> Google Drive में भी जाती है। किसी और को नहीं मिलती।</p>`,
+    `<p>Pocket Money બધું <b>આ જ ફોનમાં</b> રાખે છે. Google Drive બેકઅપ ચાલુ હોય તો એક કૉપી <b>તમારી પોતાની</b> Google Driveમાં પણ જાય છે. બીજા કોઈને મળતી નથી.</p>`,
+    `<p>Pocket Money सगळं <b>याच फोनवर</b> ठेवतो. Google Drive बॅकअप चालू असेल तर एक कॉपी <b>तुमच्या स्वतःच्या</b> Google Drive मध्येही जाते. इतर कुणालाही मिळत नाही.</p>`],
+  [`<p>When your bank texts a debit like <b>"Rs.250 sent to Swiggy"</b>, you get an alert within seconds and the spend waits on Home for a one-tap add.</p><p>Read on this phone only, never uploaded. Credits, OTPs and personal chats are ignored.</p><p>No alerts on a Xiaomi, Redmi, Oppo, Vivo, Realme or OnePlus phone? In phone Settings → Apps → Pocket Money, turn on <b>Autostart</b>.</p>`,
+    `<p>जब बैंक <b>"Rs.250 sent to Swiggy"</b> जैसा डेबिट SMS भेजता है, तो कुछ ही सेकंड में अलर्ट आता है और खर्च होम पर एक टैप में जोड़ने के लिए तैयार रहता है।</p><p>सिर्फ़ इसी फ़ोन पर पढ़ा जाता है, कभी अपलोड नहीं होता। क्रेडिट, OTP और निजी चैट छोड़ दिए जाते हैं।</p><p>Xiaomi, Redmi, Oppo, Vivo, Realme या OnePlus फ़ोन पर अलर्ट नहीं आते? फ़ोन की Settings → Apps → Pocket Money में <b>Autostart</b> चालू करें।</p>`,
+    `<p>બેંક <b>"Rs.250 sent to Swiggy"</b> જેવો ડેબિટ SMS મોકલે ત્યારે થોડી સેકન્ડમાં અલર્ટ આવે છે અને ખર્ચ હોમ પર એક ટૅપમાં ઉમેરવા તૈયાર રહે છે.</p><p>ફક્ત આ ફોનમાં જ વંચાય છે, ક્યારેય અપલોડ થતું નથી. ક્રેડિટ, OTP અને અંગત ચેટ અવગણાય છે.</p><p>Xiaomi, Redmi, Oppo, Vivo, Realme કે OnePlus ફોન પર અલર્ટ નથી આવતા? ફોનના Settings → Apps → Pocket Moneyમાં <b>Autostart</b> ચાલુ કરો.</p>`,
+    `<p>बँक <b>"Rs.250 sent to Swiggy"</b> सारखा डेबिट SMS पाठवते तेव्हा काही सेकंदांत अलर्ट येतो आणि खर्च होमवर एका टॅपमध्ये जोडण्यासाठी तयार असतो.</p><p>फक्त याच फोनवर वाचला जातो, कधीच अपलोड होत नाही. क्रेडिट, OTP आणि खासगी चॅट्स सोडल्या जातात.</p><p>Xiaomi, Redmi, Oppo, Vivo, Realme किंवा OnePlus फोनवर अलर्ट येत नाहीत? फोनच्या Settings → Apps → Pocket Money मध्ये <b>Autostart</b> चालू करा.</p>`],
+  [`About Google Drive backup`, `Google Drive बैकअप के बारे में`, `Google Drive બેકઅપ વિશે`, `Google Drive बॅकअपबद्दल`],
+  [`About SMS auto-detect`, `SMS ऑटो-डिटेक्ट के बारे में`, `SMS ઑટો-ડિટેક્ટ વિશે`, `SMS ऑटो-डिटेक्टबद्दल`],
+  [`About app lock`, `ऐप लॉक के बारे में`, `ઍપ લૉક વિશે`, `ॲप लॉकबद्दल`],
+  [`About the daily reminder`, `रोज़ के रिमाइंडर के बारे में`, `રોજના રિમાઇન્ડર વિશે`, `रोजच्या रिमाइंडरबद्दल`],
+  [`Account`, `अकाउंट`, `એકાઉન્ટ`, `अकाउंट`],
+  [`Add`, `जोड़ें`, `ઉમેરો`, `जोडा`],
+  [`Add a heading`, `एक हेडिंग लिखें`, `હેડિંગ લખો`, `हेडिंग लिहा`],
+  [`Add all`, `सब जोड़ें`, `બધું ઉમેરો`, `सर्व जोडा`],
+  [`Add expense`, `खर्च जोड़ें`, `ખર્ચ ઉમેરો`, `खर्च जोडा`],
+  [`Add for {name}`, `{name} के लिए जोड़ें`, `{name} માટે ઉમેરો`, `{name} साठी जोडा`],
+  [`Add the 1 spend already logged in these dates to {name}? You can untag it later.`, `इन तारीखों में पहले से लिखा 1 खर्च {name} में जोड़ें? बाद में हटा भी सकते हैं।`, `આ તારીખોમાં પહેલેથી લખેલો 1 ખર્ચ {name}માં ઉમેરવો છે? પછીથી કાઢી પણ શકો છો.`, `या तारखांमध्ये आधीच लिहिलेला 1 खर्च {name} मध्ये जोडायचा? नंतर काढताही येईल.`],
+  [`Add the {n} spends already logged in these dates to {name}? You can untag any of them later.`, `इन तारीखों में पहले से लिखे {n} खर्च {name} में जोड़ें? इनमें से कोई भी बाद में हटा सकते हैं।`, `આ તારીખોમાં પહેલેથી લખેલા {n} ખર્ચ {name}માં ઉમેરવા છે? એમાંથી કોઈપણ પછીથી કાઢી શકો છો.`, `या तारखांमध्ये आधीच लिहिलेले {n} खर्च {name} मध्ये जोडायचे? यातील कोणताही नंतर काढता येईल.`],
+  [`Add them`, `जोड़ें`, `ઉમેરો`, `जोडा`],
+  [`Add udhaar`, `उधार जोड़ें`, `ઉધાર ઉમેરો`, `उधारी जोडा`],
+  [`Add your friend's name`, `दोस्त का नाम लिखें`, `મિત્રનું નામ લખો`, `मित्राचं नाव लिहा`],
+  [`Added 1 spend from SMS`, `SMS से 1 खर्च जोड़ा`, `SMSમાંથી 1 ખર્ચ ઉમેર્યો`, `SMS मधून 1 खर्च जोडला`],
+  [`Added {n} spends from SMS`, `SMS से {n} खर्च जोड़े`, `SMSમાંથી {n} ખર્ચ ઉમેર્યા`, `SMS मधून {n} खर्च जोडले`],
+  [`Added {n} to {name}`, `{name} में {n} जोड़े`, `{name}માં {n} ઉમેર્યા`, `{name} मध्ये {n} जोडले`],
+  [`Added {title} · {amt}`, `जोड़ा: {title} · {amt}`, `ઉમેર્યું: {title} · {amt}`, `जोडलं: {title} · {amt}`],
+  [`All`, `सभी`, `બધા`, `सर्व`],
+  [`All data deleted`, `सारा डेटा मिटा दिया`, `બધો ડેટા કાઢી નાખ્યો`, `सगळा डेटा हटवला`],
+  [`All settled with {name}. 🎉`, `{name} के साथ हिसाब बराबर। 🎉`, `{name} સાથે હિસાબ સરખો. 🎉`, `{name} सोबत हिशोब पूर्ण. 🎉`],
+  [`Allow SMS access`, `SMS की इजाज़त दें`, `SMSની મંજૂરી આપો`, `SMS ची परवानगी द्या`],
+  [`Already paid`, `चुका दिया`, `ચૂકવી દીધું`, `आधीच फेडले`],
+  [`Amount`, `रकम`, `રકમ`, `रक्कम`],
+  [`Android asks "Install?" here. Tap Install.`, `यहाँ Android "Install?" पूछता है। Install दबाएँ।`, `અહીં Android "Install?" પૂછે છે. Install દબાવો.`, `इथे Android "Install?" विचारतो. Install दाबा.`],
+  [`Android protects SMS for apps installed outside the Play Store. Allow it once:`, `Play Store के बाहर से इंस्टॉल ऐप्स के लिए Android SMS को सुरक्षित रखता है। एक बार इजाज़त दें:`, `Play Store બહારથી ઇન્સ્ટોલ થયેલી ઍપ્સ માટે Android SMSને સુરક્ષિત રાખે છે. એક વાર મંજૂરી આપો:`, `Play Store बाहेरून इन्स्टॉल केलेल्या ॲप्ससाठी Android SMS सुरक्षित ठेवतो. एकदा परवानगी द्या:`],
+  [`App lock`, `ऐप लॉक`, `ઍપ લૉક`, `ॲप लॉक`],
+  [`App lock off`, `ऐप लॉक बंद`, `ઍપ લૉક બંધ`, `ॲप लॉक बंद`],
+  [`App lock on. Pocket Money will ask for your fingerprint or PIN.`, `ऐप लॉक चालू। Pocket Money आपका फ़िंगरप्रिंट या PIN माँगेगा।`, `ઍપ લૉક ચાલુ. Pocket Money તમારી ફિંગરપ્રિન્ટ કે PIN માંગશે.`, `ॲप लॉक चालू. Pocket Money तुमचा फिंगरप्रिंट किंवा PIN विचारेल.`],
+  [`App lock uses your phone's fingerprint, face or PIN. Add one in phone <b>Settings → Security</b>, then try again.`, `ऐप लॉक आपके फ़ोन का फ़िंगरप्रिंट, चेहरा या PIN इस्तेमाल करता है। फ़ोन की <b>Settings → Security</b> में एक जोड़ें, फिर दोबारा कोशिश करें।`, `ઍપ લૉક તમારા ફોનની ફિંગરપ્રિન્ટ, ચહેરો કે PIN વાપરે છે. ફોનના <b>Settings → Security</b>માં એક ઉમેરો, પછી ફરી પ્રયાસ કરો.`, `ॲप लॉक तुमच्या फोनचा फिंगरप्रिंट, चेहरा किंवा PIN वापरतो. फोनच्या <b>Settings → Security</b> मध्ये एक जोडा, मग पुन्हा प्रयत्न करा.`],
+  [`At 10 AM we'll get the WhatsApp message ready for you.`, `सुबह 10 बजे हम WhatsApp मैसेज तैयार कर देंगे।`, `સવારે 10 વાગ્યે અમે WhatsApp મેસેજ તૈયાર કરી દઈશું.`, `सकाळी 10 वाजता आम्ही WhatsApp मेसेज तयार ठेवू.`],
+  [`Auto-detect from SMS`, `SMS से अपने-आप पकड़ें`, `SMSમાંથી આપમેળે શોધો`, `SMS मधून आपोआप ओळखा`],
+  [`Auto-detect on. Your next UPI payment will pop up within seconds.`, `ऑटो-डिटेक्ट चालू। अगला UPI पेमेंट कुछ ही सेकंड में दिखेगा।`, `ઑટો-ડિટેક્ટ ચાલુ. આગલું UPI પેમેન્ટ થોડી સેકન્ડમાં દેખાશે.`, `ऑटो-डिटेक्ट चालू. पुढचं UPI पेमेंट काही सेकंदांत दिसेल.`],
+  [`Backed up to your own Google Drive`, `आपकी अपनी Google Drive में बैकअप`, `તમારી પોતાની Google Driveમાં બેકઅપ`, `तुमच्या स्वतःच्या Google Drive मध्ये बॅकअप`],
+  [`Backed up to {where}`, `{where} पर बैकअप हो गया`, `{where} પર બેકઅપ થઈ ગયો`, `{where} वर बॅकअप झाला`],
+  [`Backing up to your Google Drive`, `आपकी Google Drive में बैकअप हो रहा है`, `તમારી Google Driveમાં બેકઅપ થાય છે`, `तुमच्या Google Drive मध्ये बॅकअप होतोय`],
+  [`Bills`, `बिल`, `બિલ`, `बिलं`],
+  [`Bring back your Google Drive backup? Entries already on this phone stay; missing ones are added.`, `Google Drive का बैकअप वापस लाएँ? फ़ोन पर जो एंट्री हैं वो रहेंगी; जो नहीं हैं वो जुड़ जाएँगी।`, `Google Driveનો બેકઅપ પાછો લાવવો છે? ફોનમાં જે એન્ટ્રી છે તે રહેશે; જે નથી તે ઉમેરાશે.`, `Google Drive चा बॅकअप परत आणायचा? फोनवर असलेल्या नोंदी राहतील; नसलेल्या जोडल्या जातील.`],
+  [`Budget`, `बजट`, `બજેટ`, `बजेट`],
+  [`Budget for it (optional)`, `इसका बजट (ज़रूरी नहीं)`, `એનું બજેટ (વૈકલ્પિક)`, `याचं बजेट (ऐच्छिक)`],
+  [`Budget set to {amt}`, `बजट {amt} सेट हुआ`, `બજેટ {amt} સેટ થયું`, `बजेट {amt} सेट झालं`],
+  [`Budget turned off`, `बजट बंद`, `બજેટ બંધ`, `बजेट बंद`],
+  [`Cancel`, `रद्द करें`, `રદ કરો`, `रद्द करा`],
+  [`Card`, `कार्ड`, `કાર્ડ`, `कार्ड`],
+  [`Cash`, `नकद`, `રોકડ`, `रोख`],
+  [`Category`, `कैटेगरी`, `કેટેગરી`, `कॅटेगरी`],
+  [`Change`, `बदलें`, `બદલો`, `बदला`],
+  [`Close`, `बंद करें`, `બંધ કરો`, `बंद करा`],
+  [`Collect {amt} from {name}`, `{name} से {amt} लेने हैं`, `{name} પાસેથી {amt} લેવાના છે`, `{name} कडून {amt} घ्यायचे आहेत`],
+  [`Come back and turn on <b>Auto-detect from SMS</b>`, `वापस आकर <b>SMS से अपने-आप पकड़ें</b> चालू करें`, `પાછા આવીને <b>SMSમાંથી આપમેળે શોધો</b> ચાલુ કરો`, `परत येऊन <b>SMS मधून आपोआप ओळखा</b> चालू करा`],
+  [`Confirm it's you`, `पुष्टि करें कि आप ही हैं`, `ખાતરી કરો કે તમે જ છો`, `तुम्हीच आहात याची खात्री करा`],
+  [`Continue with Google`, `Google के साथ आगे बढ़ें`, `Google સાથે આગળ વધો`, `Google सोबत पुढे चला`],
+  [`Continue with current version`, `इसी वर्ज़न के साथ चलाएँ`, `આ જ વર્ઝન સાથે ચાલુ રાખો`, `याच व्हर्जनसह सुरू ठेवा`],
+  [`Could not export: {err}`, `एक्सपोर्ट नहीं हुआ: {err}`, `એક્સપોર્ટ ન થયું: {err}`, `एक्सपोर्ट झालं नाही: {err}`],
+  [`Daily nudge off`, `रोज़ का रिमाइंडर बंद`, `રોજનું રિમાઇન્ડર બંધ`, `रोजचं रिमाइंडर बंद`],
+  [`Daily nudge on (works in the phone app)`, `रोज़ का रिमाइंडर चालू (फ़ोन ऐप में काम करता है)`, `રોજનું રિમાઇન્ડર ચાલુ (ફોન ઍપમાં ચાલે છે)`, `रोजचं रिमाइंडर चालू (फोन ॲपमध्ये चालतं)`],
+  [`Daily nudge on: 9 PM`, `रोज़ का रिमाइंडर चालू: रात 9 बजे`, `રોજનું રિમાઇન્ડર ચાલુ: રાત્રે 9 વાગ્યે`, `रोजचं रिमाइंडर चालू: रात्री 9 वाजता`],
+  [`Daily reminder`, `रोज़ का रिमाइंडर`, `રોજનું રિમાઇન્ડર`, `रोजचं रिमाइंडर`],
+  [`Daily reminder, 9 PM`, `रोज़ का रिमाइंडर, रात 9 बजे`, `રોજનું રિમાઇન્ડર, રાત્રે 9`, `रोजचं रिमाइंडर, रात्री 9`],
+  [`Dark`, `डार्क`, `ડાર્ક`, `डार्क`],
+  [`Date`, `तारीख`, `તારીખ`, `तारीख`],
+  [`Day {d} of {n}`, `दिन {d} / {n}`, `દિવસ {d} / {n}`, `दिवस {d} / {n}`],
+  [`Delete`, `मिटाएँ`, `કાઢી નાખો`, `हटवा`],
+  [`Delete all`, `सब मिटाएँ`, `બધું કાઢી નાખો`, `सर्व हटवा`],
+  [`Delete all data`, `सारा डेटा मिटाएँ`, `બધો ડેટા કાઢી નાખો`, `सगळा डेटा हटवा`],
+  [`Delete all {e} expenses and {u} udhaar entries? Download a backup first if unsure.`, `सभी {e} खर्च और {u} उधार एंट्री मिटाएँ? पक्का न हो तो पहले बैकअप डाउनलोड करें।`, `બધા {e} ખર્ચ અને {u} ઉધાર એન્ટ્રી કાઢી નાખવી છે? ખાતરી ન હોય તો પહેલા બેકઅપ ડાઉનલોડ કરો.`, `सर्व {e} खर्च आणि {u} उधारी नोंदी हटवायच्या? खात्री नसेल तर आधी बॅकअप डाउनलोड करा.`],
+  [`Delete this expense?`, `यह खर्च मिटाएँ?`, `આ ખર્ચ કાઢી નાખવો છે?`, `हा खर्च हटवायचा?`],
+  [`Delete this udhaar with {name}?`, `{name} के साथ यह उधार मिटाएँ?`, `{name} સાથેનું આ ઉધાર કાઢી નાખવું છે?`, `{name} सोबतची ही उधारी हटवायची?`],
+  [`Delete {name}?`, `{name} मिटाएँ?`, `{name} કાઢી નાખવું છે?`, `{name} हटवायचं?`],
+  [`Deleted`, `मिटा दिया`, `કાઢી નાખ્યું`, `हटवलं`],
+  [`Didn't install? Try again, or keep using this version for now.`, `इंस्टॉल नहीं हुआ? फिर से कोशिश करें, या अभी यही वर्ज़न चलाते रहें।`, `ઇન્સ્ટોલ ન થયું? ફરી પ્રયાસ કરો, અથવા હમણાં આ જ વર્ઝન વાપરતા રહો.`, `इन्स्टॉल झालं नाही? पुन्हा प्रयत्न करा, किंवा सध्या हेच व्हर्जन वापरत राहा.`],
+  [`Download backup file`, `बैकअप फ़ाइल डाउनलोड करें`, `બેકઅપ ફાઇલ ડાઉનલોડ કરો`, `बॅकअप फाइल डाउनलोड करा`],
+  [`Download failed. Check your internet and try again.`, `डाउनलोड नहीं हुआ। इंटरनेट देखकर फिर कोशिश करें।`, `ડાઉનલોડ ન થયું. ઇન્ટરનેટ તપાસીને ફરી પ્રયાસ કરો.`, `डाउनलोड झालं नाही. इंटरनेट तपासून पुन्हा प्रयत्न करा.`],
+  [`Downloading update… {pct}%`, `अपडेट डाउनलोड हो रहा है… {pct}%`, `અપડેટ ડાઉનલોડ થાય છે… {pct}%`, `अपडेट डाउनलोड होतंय… {pct}%`],
+  [`Due`, `बकाया`, `બાકી`, `थकीत`],
+  [`Due today. Clear it and stay friends 🙂`, `आज देना है। चुका दीजिए, दोस्ती बनी रहे 🙂`, `આજે આપવાના છે. ચૂકવી દો, દોસ્તી જળવાય 🙂`, `आज द्यायचे आहेत. फेडून टाका, मैत्री टिकवा 🙂`],
+  [`Edit`, `बदलें`, `ફેરફાર`, `बदला`],
+  [`Edit expense`, `खर्च बदलें`, `ખર્ચમાં ફેરફાર`, `खर्च बदला`],
+  [`Edit trip or event`, `ट्रिप या इवेंट बदलें`, `ટ્રિપ કે ઇવેન્ટમાં ફેરફાર`, `ट्रिप किंवा इव्हेंट बदला`],
+  [`Edit udhaar`, `उधार बदलें`, `ઉધારમાં ફેરફાર`, `उधारी बदला`],
+  [`Enter an amount`, `रकम लिखें`, `રકમ લખો`, `रक्कम लिहा`],
+  [`Ever wondered where your money <span class="hl">went</span>?`, `कभी सोचा है आपके पैसे <span class="hl">कहाँ गए</span>?`, `ક્યારેય વિચાર્યું છે કે તમારા પૈસા <span class="hl">ક્યાં ગયા</span>?`, `कधी विचार केलाय तुमचे पैसे <span class="hl">कुठे गेले</span>?`],
+  [`Export works in the phone app`, `एक्सपोर्ट फ़ोन ऐप में होता है`, `એક્સપોર્ટ ફોન ઍપમાં થાય છે`, `एक्सपोर्ट फोन ॲपमध्ये होतं`],
+  [`Fewer people`, `कम लोग`, `ઓછા લોકો`, `कमी लोक`],
+  [`Finish the install from your downloads.`, `डाउनलोड्स से इंस्टॉल पूरा करें।`, `ડાઉનલોડ્સમાંથી ઇન્સ્ટોલ પૂરું કરો.`, `डाउनलोड्समधून इन्स्टॉल पूर्ण करा.`],
+  [`Food`, `खाना`, `ખાવાનું`, `जेवण`],
+  [`Found 1 spend in your SMS`, `आपके SMS में 1 खर्च मिला`, `તમારા SMSમાં 1 ખર્ચ મળ્યો`, `तुमच्या SMS मध्ये 1 खर्च सापडला`],
+  [`Found in your SMS`, `आपके SMS में मिले`, `તમારા SMSમાં મળ્યા`, `तुमच्या SMS मध्ये सापडले`],
+  [`Found {n} spends in your SMS`, `आपके SMS में {n} खर्च मिले`, `તમારા SMSમાં {n} ખર્ચ મળ્યા`, `तुमच्या SMS मध्ये {n} खर्च सापडले`],
+  [`Friend`, `दोस्त`, `મિત્ર`, `मित्र`],
+  [`From`, `से`, `થી`, `पासून`],
+  [`From SMS`, `SMS से`, `SMSમાંથી`, `SMS मधून`],
+  [`Full {amt}`, `पूरे {amt}`, `પૂરા {amt}`, `पूर्ण {amt}`],
+  [`Fun`, `मनोरंजन`, `મનોરંજન`, `मनोरंजन`],
+  [`General`, `सामान्य`, `સામાન્ય`, `सामान्य`],
+  [`Give it a name, e.g. Goa trip`, `एक नाम दें, जैसे गोवा ट्रिप`, `એક નામ આપો, જેમ કે ગોવા ટ્રિપ`, `एक नाव द्या, उदा. गोवा ट्रिप`],
+  [`Gone. Changed your mind?`, `मिट गया। इरादा बदला?`, `ગયું. વિચાર બદલાયો?`, `गेलं. विचार बदलला?`],
+  [`Google Drive backup`, `Google Drive बैकअप`, `Google Drive બેકઅપ`, `Google Drive बॅकअप`],
+  [`Google Drive backup off`, `Google Drive बैकअप बंद`, `Google Drive બેકઅપ બંધ`, `Google Drive बॅकअप बंद`],
+  [`Google account`, `Google अकाउंट`, `Google એકાઉન્ટ`, `Google अकाउंट`],
+  [`Google doesn't recognise Pocket Money yet. The one-time Google Cloud setup needs to be completed (or its fingerprint doesn't match).`, `Google अभी Pocket Money को नहीं पहचानता। एक बार का Google Cloud सेटअप पूरा करना होगा (या उसका फ़िंगरप्रिंट मेल नहीं खाता)।`, `Google હજી Pocket Moneyને ઓળખતું નથી. એક વારનું Google Cloud સેટઅપ પૂરું કરવું પડશે (અથવા તેની ફિંગરપ્રિન્ટ મેળ ખાતી નથી).`, `Google अजून Pocket Money ओळखत नाही. एकदाचं Google Cloud सेटअप पूर्ण करावं लागेल (किंवा त्याचा फिंगरप्रिंट जुळत नाही).`],
+  [`Google setup not finished`, `Google सेटअप पूरा नहीं हुआ`, `Google સેટઅપ પૂરું થયું નથી`, `Google सेटअप पूर्ण झालं नाही`],
+  [`Google sign-in cancelled`, `Google साइन-इन रद्द हुआ`, `Google સાઇન-ઇન રદ થયું`, `Google साइन-इन रद्द झालं`],
+  [`Got money back`, `पैसे वापस मिले`, `પૈસા પાછા મળ્યા`, `पैसे परत मिळाले`],
+  [`Groceries`, `किराना`, `કરિયાણું`, `किराणा`],
+  [`Had a chai today? Start there. It takes 3 seconds.`, `आज चाय पी? वहीं से शुरू करें। 3 सेकंड लगेंगे।`, `આજે ચા પીધી? ત્યાંથી શરૂ કરો. 3 સેકન્ડ લાગશે.`, `आज चहा घेतला? तिथूनच सुरुवात करा. 3 सेकंद लागतील.`],
+  [`Heading, amount, how you paid. Done in 3 seconds.`, `हेडिंग, रकम, कैसे दिए। 3 सेकंड में हो गया।`, `હેડિંગ, રકમ, કેવી રીતે ચૂકવ્યા. 3 સેકન્ડમાં થઈ ગયું.`, `हेडिंग, रक्कम, कसे दिले. 3 सेकंदांत झालं.`],
+  [`Heading, e.g. Lunch, Petrol, Recharge`, `हेडिंग, जैसे लंच, पेट्रोल, रिचार्ज`, `હેડિંગ, જેમ કે લંચ, પેટ્રોલ, રિચાર્જ`, `हेडिंग, उदा. जेवण, पेट्रोल, रिचार्ज`],
+  [`Health`, `सेहत`, `આરોગ્ય`, `आरोग्य`],
+  [`Hey {name}, just a reminder about the {amount} from {date} 🙂`, `हाय {name}, {date} वाले {amount} की बस एक याद 🙂`, `હાય {name}, {date}ના {amount}ની બસ એક યાદ 🙂`, `हाय {name}, {date} च्या {amount} ची फक्त आठवण 🙂`],
+  [`History`, `हिसाब`, `હિસાબ`, `हिशोब`],
+  [`Home`, `होम`, `હોમ`, `होम`],
+  [`I gave`, `मैंने दिए`, `મેં આપ્યા`, `मी दिले`],
+  [`I paid it`, `मैंने चुका दिया`, `મેં ચૂકવી દીધા`, `मी फेडले`],
+  [`I paid it back`, `मैंने लौटा दिए`, `મેં પાછા આપી દીધા`, `मी परत दिले`],
+  [`I took`, `मैंने लिए`, `મેં લીધા`, `मी घेतले`],
+  [`Ignore`, `छोड़ें`, `અવગણો`, `दुर्लक्ष करा`],
+  [`Ignored`, `छोड़ दिया`, `અવગણ્યું`, `दुर्लक्ष केलं`],
+  [`In 1 month`, `1 महीने में`, `1 મહિનામાં`, `1 महिन्यात`],
+  [`In 1 week`, `1 हफ़्ते में`, `1 અઠવાડિયામાં`, `1 आठवड्यात`],
+  [`In 2 weeks`, `2 हफ़्ते में`, `2 અઠવાડિયામાં`, `2 आठवड्यांत`],
+  [`Its 1 spend stays, just without the tag.`, `इसका 1 खर्च रहेगा, बस टैग के बिना।`, `એનો 1 ખર્ચ રહેશે, બસ ટૅગ વગર.`, `याचा 1 खर्च राहील, फक्त टॅगशिवाय.`],
+  [`Its {n} spends stay, just without the tag.`, `इसके {n} खर्च रहेंगे, बस टैग के बिना।`, `એના {n} ખર્ચ રહેશે, બસ ટૅગ વગર.`, `याचे {n} खर्च राहतील, फक्त टॅगशिवाय.`],
+  [`Know where your money goes.`, `जानिए आपका पैसा कहाँ जाता है।`, `જાણો તમારા પૈસા ક્યાં જાય છે.`, `जाणून घ्या तुमचे पैसे कुठे जातात.`],
+  [`Language`, `भाषा`, `ભાષા`, `भाषा`],
+  [`Last backup failed. Will retry.`, `पिछला बैकअप नहीं हुआ। फिर कोशिश होगी।`, `છેલ્લો બેકઅપ ન થયો. ફરી પ્રયાસ થશે.`, `मागचा बॅकअप झाला नाही. पुन्हा प्रयत्न होईल.`],
+  [`Later`, `बाद में`, `પછી`, `नंतर`],
+  [`Leave empty or 0 to turn it off.`, `बंद करने के लिए खाली छोड़ें या 0 लिखें।`, `બંધ કરવા ખાલી રાખો અથવા 0 લખો.`, `बंद करण्यासाठी रिकामं ठेवा किंवा 0 लिहा.`],
+  [`Lent or borrowed money? Tap <b>+</b> to note it.`, `पैसे दिए या लिए? लिखने के लिए <b>+</b> दबाएँ।`, `પૈસા આપ્યા કે લીધા? નોંધવા <b>+</b> દબાવો.`, `पैसे दिले किंवा घेतले? नोंदवण्यासाठी <b>+</b> दाबा.`],
+  [`Let's go`, `चलिए शुरू करें`, `ચાલો શરૂ કરીએ`, `चला सुरू करूया`],
+  [`Light`, `लाइट`, `લાઇટ`, `लाइट`],
+  [`Link contact`, `कॉन्टैक्ट जोड़ें`, `કોન્ટેક્ટ જોડો`, `कॉन्टॅक्ट जोडा`],
+  [`Linked to {name}'s WhatsApp`, `{name} के WhatsApp से जुड़ गया`, `{name}ના WhatsApp સાથે જોડાયું`, `{name} च्या WhatsApp शी जोडलं`],
+  [`Locked`, `लॉक है`, `લૉક છે`, `लॉक आहे`],
+  [`Maybe added as "{title}"`, `शायद "{title}" नाम से जोड़ा है`, `કદાચ "{title}" નામે ઉમેર્યું છે`, `कदाचित "{title}" नावाने जोडलंय`],
+  [`Message saved`, `मैसेज सेव हुआ`, `મેસેજ સેવ થયો`, `मेसेज सेव्ह झाला`],
+  [`Money back from {name}`, `{name} से पैसे वापस`, `{name} પાસેથી પૈસા પાછા`, `{name} कडून पैसे परत`],
+  [`Month over`, `महीना खत्म`, `મહિનો પૂરો`, `महिना संपला`],
+  [`Monthly budget`, `महीने का बजट`, `મહિનાનું બજેટ`, `महिन्याचं बजेट`],
+  [`More people`, `ज़्यादा लोग`, `વધુ લોકો`, `जास्त लोक`],
+  [`Name, e.g. Goa trip, Diwali, Wedding`, `नाम, जैसे गोवा ट्रिप, दिवाली, शादी`, `નામ, જેમ કે ગોવા ટ્રિપ, દિવાળી, લગ્ન`, `नाव, उदा. गोवा ट्रिप, दिवाळी, लग्न`],
+  [`Name, e.g. Rahul`, `नाम, जैसे राहुल`, `નામ, જેમ કે રાહુલ`, `नाव, उदा. राहुल`],
+  [`New trip or event`, `नई ट्रिप या इवेंट`, `નવી ટ્રિપ કે ઇવેન્ટ`, `नवी ट्रिप किंवा इव्हेंट`],
+  [`Next`, `आगे`, `આગળ`, `पुढे`],
+  [`Next month`, `अगला महीना`, `આવતો મહિનો`, `पुढचा महिना`],
+  [`No Pocket Money backup in this Google account yet`, `इस Google अकाउंट में अभी कोई Pocket Money बैकअप नहीं है`, `આ Google એકાઉન્ટમાં હજી કોઈ Pocket Money બેકઅપ નથી`, `या Google अकाउंटमध्ये अजून Pocket Money बॅकअप नाही`],
+  [`No WhatsApp contact linked`, `कोई WhatsApp कॉन्टैक्ट नहीं जुड़ा`, `કોઈ WhatsApp કોન્ટેક્ટ જોડાયો નથી`, `कोणताही WhatsApp कॉन्टॅक्ट जोडलेला नाही`],
+  [`No data yet`, `अभी कोई डेटा नहीं`, `હજી કોઈ ડેટા નથી`, `अजून डेटा नाही`],
+  [`No reminder`, `कोई रिमाइंडर नहीं`, `રિમાઇન્ડર નહીં`, `रिमाइंडर नको`],
+  [`Note (optional)`, `नोट (ज़रूरी नहीं)`, `નોંધ (વૈકલ્પિક)`, `नोंद (ऐच्छिक)`],
+  [`Noted: you owe {name} {amt}.`, `लिख लिया: आपको {name} को {amt} देने हैं।`, `નોંધ્યું: તમારે {name}ને {amt} આપવાના છે.`, `नोंदवलं: तुम्हाला {name} ला {amt} द्यायचे आहेत.`],
+  [`Noted: {name} has your {amt}.`, `लिख लिया: {name} के पास आपके {amt} हैं।`, `નોંધ્યું: {name} પાસે તમારા {amt} છે.`, `नोंदवलं: {name} कडे तुमचे {amt} आहेत.`],
+  [`Nothing found for {month}.`, `{month} में कुछ नहीं मिला।`, `{month}માં કંઈ મળ્યું નહીં.`, `{month} मध्ये काही सापडलं नाही.`],
+  [`Nothing found.`, `कुछ नहीं मिला।`, `કંઈ મળ્યું નહીં.`, `काही सापडलं नाही.`],
+  [`Nothing in {name} yet.`, `{name} में अभी कुछ नहीं।`, `{name}માં હજી કંઈ નથી.`, `{name} मध्ये अजून काही नाही.`],
+  [`Nothing to delete`, `मिटाने को कुछ नहीं`, `કાઢવા માટે કંઈ નથી`, `हटवण्यासारखं काही नाही`],
+  [`OK`, `ठीक है`, `ઠીક છે`, `ठीक आहे`],
+  [`Off`, `बंद`, `બંધ`, `बंद`],
+  [`On the phone, the app closes here`, `फ़ोन पर यहाँ ऐप बंद हो जाता है`, `ફોનમાં અહીં ઍપ બંધ થઈ જાય છે`, `फोनवर इथे ॲप बंद होतं`],
+  [`On the phone, your contact list opens here`, `फ़ोन पर यहाँ आपकी कॉन्टैक्ट लिस्ट खुलती है`, `ફોનમાં અહીં તમારી કોન્ટેક્ટ લિસ્ટ ખૂલે છે`, `फोनवर इथे तुमची कॉन्टॅक्ट लिस्ट उघडते`],
+  [`Open`, `खोलें`, `ખોલો`, `उघडा`],
+  [`Open your phone <b>Settings → Apps → Pocket Money</b>`, `फ़ोन की <b>Settings → Apps → Pocket Money</b> खोलें`, `ફોનના <b>Settings → Apps → Pocket Money</b> ખોલો`, `फोनच्या <b>Settings → Apps → Pocket Money</b> उघडा`],
+  [`Other`, `अन्य`, `અન્ય`, `इतर`],
+  [`Paid via`, `कैसे दिए`, `કેવી રીતે ચૂકવ્યા`, `कसे दिले`],
+  [`Pay {name} {amt}`, `{name} को {amt} देने हैं`, `{name}ને {amt} આપવાના છે`, `{name} ला {amt} द्यायचे आहेत`],
+  [`Pick a date`, `तारीख चुनें`, `તારીખ પસંદ કરો`, `तारीख निवडा`],
+  [`Pick contact`, `कॉन्टैक्ट चुनें`, `કોન્ટેક્ટ પસંદ કરો`, `कॉन्टॅक्ट निवडा`],
+  [`Pick the dates`, `तारीखें चुनें`, `તારીખો પસંદ કરો`, `तारखा निवडा`],
+  [`Please send yours when you can 🙂`, `जब हो सके अपना हिस्सा भेज देना 🙂`, `બને ત્યારે તમારો ભાગ મોકલી દેજો 🙂`, `जमेल तेव्हा तुमचा वाटा पाठवा 🙂`],
+  [`Pocket Money now speaks हिन्दी, ગુજરાતી and मराठी. Change it in Settings → Language.`, `Pocket Money अब हिन्दी, ગુજરાતી और मराठी में। Settings → भाषा में बदलें।`, `Pocket Money હવે हिन्दी, ગુજરાતી અને मराठीમાં. Settings → ભાષામાં બદલો.`, `Pocket Money आता हिन्दी, ગુજરાતી आणि मराठी मध्ये. Settings → भाषा मध्ये बदला.`],
+  [`Pocket Money shows you, one spend at a time.`, `Pocket Money दिखाता है, एक-एक खर्च करके।`, `Pocket Money બતાવે છે, એક-એક ખર્ચ કરીને.`, `Pocket Money दाखवतो, एक-एक खर्च करून.`],
+  [`Preview.`, `प्रीव्यू।`, `પ્રિવ્યૂ.`, `प्रिव्ह्यू.`],
+  [`Previous month`, `पिछला महीना`, `ગયો મહિનો`, `मागचा महिना`],
+  [`Recent`, `हाल के`, `તાજેતરના`, `अलीकडचे`],
+  [`Remind`, `याद दिलाएँ`, `યાદ કરાવો`, `आठवण करा`],
+  [`Remind me`, `मुझे याद दिलाएँ`, `મને યાદ કરાવો`, `मला आठवण करा`],
+  [`Remind on WhatsApp`, `WhatsApp पर याद दिलाएँ`, `WhatsApp પર યાદ કરાવો`, `WhatsApp वर आठवण करा`],
+  [`Reminder on {date}.`, `{date} को रिमाइंडर।`, `{date}એ રિમાઇન્ડર.`, `{date} ला रिमाइंडर.`],
+  [`Reminder {date}`, `रिमाइंडर {date}`, `રિમાઇન્ડર {date}`, `रिमाइंडर {date}`],
+  [`Reminders`, `रिमाइंडर`, `રિમાઇન્ડર`, `रिमाइंडर`],
+  [`Remove {name}`, `{name} हटाएँ`, `{name} કાઢો`, `{name} काढा`],
+  [`Remove {name} from suggestions`, `{name} को सुझावों से हटाएँ`, `{name}ને સૂચનોમાંથી કાઢો`, `{name} सूचनांमधून काढा`],
+  [`Removed from suggestions`, `सुझावों से हटाया`, `સૂચનોમાંથી કાઢ્યું`, `सूचनांमधून काढलं`],
+  [`Restore`, `वापस लाएँ`, `પાછું લાવો`, `परत आणा`],
+  [`Restore from Google Drive`, `Google Drive से वापस लाएँ`, `Google Driveમાંથી પાછું લાવો`, `Google Drive मधून परत आणा`],
+  [`Restore from a file`, `फ़ाइल से वापस लाएँ`, `ફાઇલમાંથી પાછું લાવો`, `फाइलमधून परत आणा`],
+  [`Restored`, `वापस आ गया`, `પાછું આવ્યું`, `परत आलं`],
+  [`Restored 1 item`, `1 आइटम वापस आया`, `1 આઇટમ પાછી આવી`, `1 आयटम परत आला`],
+  [`Restored 1 item from Google Drive`, `Google Drive से 1 आइटम वापस आया`, `Google Driveમાંથી 1 આઇટમ પાછી આવી`, `Google Drive मधून 1 आयटम परत आला`],
+  [`Restored {n} items`, `{n} आइटम वापस आए`, `{n} આઇટમ પાછી આવી`, `{n} आयटम परत आले`],
+  [`Restored {n} items from Google Drive`, `Google Drive से {n} आइटम वापस आए`, `Google Driveમાંથી {n} આઇટમ પાછી આવી`, `Google Drive मधून {n} आयटम परत आले`],
+  [`SMS auto-detect off`, `SMS ऑटो-डिटेक्ट बंद`, `SMS ઑટો-ડિટેક્ટ બંધ`, `SMS ऑटो-डिटेक्ट बंद`],
+  [`Sample data, separate from your phone.`, `नमूना डेटा, आपके फ़ोन से अलग।`, `નમૂનાનો ડેટા, તમારા ફોનથી અલગ.`, `नमुना डेटा, तुमच्या फोनपासून वेगळा.`],
+  [`Save`, `सेव करें`, `સેવ કરો`, `सेव्ह करा`],
+  [`Save or send {name}`, `{name} सेव करें या भेजें`, `{name} સેવ કરો કે મોકલો`, `{name} सेव्ह करा किंवा पाठवा`],
+  [`Saved {amt} to {name}. {total} so far.`, `{amt} {name} में सेव हुआ। अब तक {total}।`, `{amt} {name}માં સેવ થયા. અત્યાર સુધી {total}.`, `{amt} {name} मध्ये सेव्ह झाले. आतापर्यंत {total}.`],
+  [`Saved {amt}. Today: {today}.`, `{amt} सेव हुआ। आज: {today}।`, `{amt} સેવ થયા. આજે: {today}.`, `{amt} सेव्ह झाले. आज: {today}.`],
+  [`Search heading, note, category`, `हेडिंग, नोट, कैटेगरी खोजें`, `હેડિંગ, નોંધ, કેટેગરી શોધો`, `हेडिंग, नोंद, कॅटेगरी शोधा`],
+  [`See all`, `सब देखें`, `બધું જુઓ`, `सर्व पाहा`],
+  [`Send on WhatsApp`, `WhatsApp पर भेजें`, `WhatsApp પર મોકલો`, `WhatsApp वर पाठवा`],
+  [`Send the reminder to {name} on WhatsApp? Pick {name} from your contacts so it goes to the right person.`, `{name} को WhatsApp पर रिमाइंडर भेजें? कॉन्टैक्ट्स से {name} चुनें ताकि सही इंसान तक पहुँचे।`, `{name}ને WhatsApp પર રિમાઇન્ડર મોકલવું છે? કોન્ટેક્ટ્સમાંથી {name} પસંદ કરો જેથી સાચી વ્યક્તિ સુધી પહોંચે.`, `{name} ला WhatsApp वर रिमाइंडर पाठवायचा? कॉन्टॅक्ट्समधून {name} निवडा म्हणजे योग्य व्यक्तीपर्यंत पोहोचेल.`],
+  [`Send the split to your group on WhatsApp?`, `स्प्लिट WhatsApp पर अपने ग्रुप में भेजें?`, `સ્પ્લિટ WhatsApp પર તમારા ગ્રુપમાં મોકલવું છે?`, `स्प्लिट WhatsApp वर तुमच्या ग्रुपमध्ये पाठवायचं?`],
+  [`Send to group`, `ग्रुप में भेजें`, `ગ્રુપમાં મોકલો`, `ग्रुपमध्ये पाठवा`],
+  [`Send {name} the reminder?`, `{name} को रिमाइंडर भेजें?`, `{name}ને રિમાઇન્ડર મોકલવું છે?`, `{name} ला रिमाइंडर पाठवायचा?`],
+  [`Set a monthly budget`, `महीने का बजट सेट करें`, `મહિનાનું બજેટ સેટ કરો`, `महिन्याचं बजेट सेट करा`],
+  [`Set up a screen lock first`, `पहले स्क्रीन लॉक लगाएँ`, `પહેલા સ્ક્રીન લૉક સેટ કરો`, `आधी स्क्रीन लॉक सेट करा`],
+  [`Settings`, `सेटिंग्स`, `સેટિંગ્સ`, `सेटिंग्ज`],
+  [`Settle it tomorrow and stay friends 🙂`, `कल चुका दीजिए, दोस्ती बनी रहे 🙂`, `કાલે ચૂકવી દો, દોસ્તી જળવાય 🙂`, `उद्या फेडून टाका, मैत्री टिकवा 🙂`],
+  [`Settled`, `हिसाब बराबर`, `હિસાબ પૂરો`, `हिशोब पूर्ण`],
+  [`Shopping`, `शॉपिंग`, `શોપિંગ`, `खरेदी`],
+  [`Show the intro again`, `परिचय फिर से दिखाएँ`, `પરિચય ફરી બતાવો`, `ओळख पुन्हा दाखवा`],
+  [`Sign in with Google`, `Google से साइन इन करें`, `Google સાથે સાઇન ઇન કરો`, `Google ने साइन इन करा`],
+  [`Sign out`, `साइन आउट`, `સાઇન આઉટ`, `साइन आउट`],
+  [`Sign out of Google? Your data stays on this phone; Drive backups stop until you sign in again.`, `Google से साइन आउट करें? आपका डेटा इसी फ़ोन पर रहेगा; दोबारा साइन इन करने तक Drive बैकअप रुके रहेंगे।`, `Googleમાંથી સાઇન આઉટ કરવું છે? તમારો ડેટા આ ફોનમાં જ રહેશે; ફરી સાઇન ઇન કરો ત્યાં સુધી Drive બેકઅપ બંધ રહેશે.`, `Google मधून साइन आउट करायचं? तुमचा डेटा याच फोनवर राहील; पुन्हा साइन इन करेपर्यंत Drive बॅकअप थांबतील.`],
+  [`Signed in as {name}. Backups are on.`, `{name} के रूप में साइन इन। बैकअप चालू है।`, `{name} તરીકે સાઇન ઇન. બેકઅપ ચાલુ છે.`, `{name} म्हणून साइन इन. बॅकअप चालू आहे.`],
+  [`Signed out. Your data is still on this phone.`, `साइन आउट हो गया। आपका डेटा अब भी इसी फ़ोन पर है।`, `સાઇન આઉટ થયું. તમારો ડેટા હજી આ ફોનમાં છે.`, `साइन आउट झालं. तुमचा डेटा अजूनही याच फोनवर आहे.`],
+  [`Skip`, `छोड़ें`, `છોડો`, `वगळा`],
+  [`Snooze 1 day`, `1 दिन बाद`, `1 દિવસ પછી`, `1 दिवसानंतर`],
+  [`Snoozed: reminder on {date}`, `टाल दिया: रिमाइंडर {date} को`, `મુલતવી: રિમાઇન્ડર {date}એ`, `पुढे ढकललं: रिमाइंडर {date} ला`],
+  [`Spends in these dates are tagged automatically and kept out of your monthly budget.`, `इन तारीखों के खर्च अपने-आप टैग होंगे और महीने के बजट से बाहर रहेंगे।`, `આ તારીખોના ખર્ચ આપમેળે ટૅગ થશે અને મહિનાના બજેટની બહાર રહેશે.`, `या तारखांचे खर्च आपोआप टॅग होतील आणि महिन्याच्या बजेटबाहेर राहतील.`],
+  [`Spends you add for {dates} join it on their own.`, `{dates} के लिए जोड़े गए खर्च अपने-आप इसमें आ जाएँगे।`, `{dates} માટે ઉમેરેલા ખર્ચ આપમેળે એમાં આવી જશે.`, `{dates} साठी जोडलेले खर्च आपोआप यात येतील.`],
+  [`Spent`, `खर्च`, `ખર્ચ`, `खर्च`],
+  [`Split saved`, `स्प्लिट सेव हुआ`, `સ્પ્લિટ સેવ થયું`, `स्प्लिट सेव्ह झालं`],
+  [`Split this bill`, `यह बिल बाँटें`, `આ બિલ વહેંચો`, `हे बिल वाटून घ्या`],
+  [`Split {n} ways, total {total}`, `{n} लोगों में बँटा, कुल {total}`, `{n} લોકોમાં વહેંચ્યું, કુલ {total}`, `{n} जणांत वाटलं, एकूण {total}`],
+  [`Split: {title}`, `बँटवारा: {title}`, `વહેંચણી: {title}`, `वाटणी: {title}`],
+  [`Starts in {n} days`, `{n} दिन में शुरू`, `{n} દિવસમાં શરૂ`, `{n} दिवसांत सुरू`],
+  [`Starts tomorrow`, `कल से शुरू`, `કાલથી શરૂ`, `उद्यापासून सुरू`],
+  [`Stay`, `होटल`, `હોટલ`, `हॉटेल`],
+  [`System default`, `फ़ोन के जैसा`, `ફોન પ્રમાણે`, `फोनप्रमाणे`],
+  [`Tap + below to log your first spend.`, `पहला खर्च लिखने के लिए नीचे + दबाएँ।`, `પહેલો ખર્ચ લખવા નીચે + દબાવો.`, `पहिला खर्च लिहिण्यासाठी खाली + दाबा.`],
+  [`Tap <b>Permissions → SMS → Allow</b>`, `<b>Permissions → SMS → Allow</b> दबाएँ`, `<b>Permissions → SMS → Allow</b> દબાવો`, `<b>Permissions → SMS → Allow</b> दाबा`],
+  [`Tap <b>⋮</b> (top right) → <b>Allow restricted settings</b>`, `<b>⋮</b> (ऊपर दाएँ) → <b>Allow restricted settings</b> दबाएँ`, `<b>⋮</b> (ઉપર જમણે) → <b>Allow restricted settings</b> દબાવો`, `<b>⋮</b> (वर उजवीकडे) → <b>Allow restricted settings</b> दाबा`],
+  [`Tap <span class="hl">+</span> to log your first spend.`, `पहला खर्च लिखने के लिए <span class="hl">+</span> दबाएँ।`, `પહેલો ખર્ચ લખવા <span class="hl">+</span> દબાવો.`, `पहिला खर्च लिहिण्यासाठी <span class="hl">+</span> दाबा.`],
+  [`Tap Install on the next screen.`, `अगली स्क्रीन पर Install दबाएँ।`, `આગલી સ્ક્રીન પર Install દબાવો.`, `पुढच्या स्क्रीनवर Install दाबा.`],
+  [`Tap Unlock to try again`, `फिर से कोशिश के लिए अनलॉक दबाएँ`, `ફરી પ્રયાસ માટે અનલૉક દબાવો`, `पुन्हा प्रयत्नासाठी अनलॉक दाबा`],
+  [`Tap to open WhatsApp with the message ready: {amt} from {date}.`, `तैयार मैसेज के साथ WhatsApp खोलने के लिए दबाएँ: {date} वाले {amt}।`, `તૈયાર મેસેજ સાથે WhatsApp ખોલવા દબાવો: {date}ના {amt}.`, `तयार मेसेजसह WhatsApp उघडण्यासाठी दाबा: {date} चे {amt}.`],
+  [`Tap to sign in to Google again`, `Google में फिर साइन इन करने के लिए दबाएँ`, `Googleમાં ફરી સાઇન ઇન કરવા દબાવો`, `Google मध्ये पुन्हा साइन इन करण्यासाठी दाबा`],
+  [`That file is not a Pocket Money backup`, `यह फ़ाइल Pocket Money बैकअप नहीं है`, `આ ફાઇલ Pocket Money બેકઅપ નથી`, `ही फाइल Pocket Money बॅकअप नाही`],
+  [`That ₹3,000 didn't just disappear. Or did it? 👀`, `वो ₹3,000 यूँ ही गायब नहीं हुए। या हुए? 👀`, `એ ₹3,000 એમ જ ગાયબ નથી થયા. કે થયા? 👀`, `ते ₹3,000 असेच गायब नाही झाले. की झाले? 👀`],
+  [`The end date is before the start date`, `आखिरी तारीख शुरू की तारीख से पहले है`, `છેલ્લી તારીખ શરૂઆતની તારીખ પહેલાં છે`, `शेवटची तारीख सुरुवातीच्या तारखेच्या आधी आहे`],
+  [`Theme`, `थीम`, `થીમ`, `थीम`],
+  [`This Google account already has a Pocket Money backup. Add its entries to this phone first?`, `इस Google अकाउंट में पहले से Pocket Money बैकअप है। पहले उसकी एंट्री इस फ़ोन में जोड़ें?`, `આ Google એકાઉન્ટમાં પહેલેથી Pocket Money બેકઅપ છે. પહેલા તેની એન્ટ્રી આ ફોનમાં ઉમેરવી છે?`, `या Google अकाउंटमध्ये आधीच Pocket Money बॅकअप आहे. आधी त्याच्या नोंदी या फोनमध्ये जोडायच्या?`],
+  [`To`, `तक`, `સુધી`, `पर्यंत`],
+  [`Today`, `आज`, `આજે`, `आज`],
+  [`Tomorrow: reminding {name} about {amt}`, `कल: {name} को {amt} की याद दिलाएँगे`, `કાલે: {name}ને {amt}ની યાદ કરાવીશું`, `उद्या: {name} ला {amt} ची आठवण करू`],
+  [`Tomorrow: you owe {name} {amt}`, `कल: आपको {name} को {amt} देने हैं`, `કાલે: તમારે {name}ને {amt} આપવાના છે`, `उद्या: तुम्हाला {name} ला {amt} द्यायचे आहेत`],
+  [`Travel`, `आना-जाना`, `મુસાફરી`, `प्रवास`],
+  [`Trip or event`, `ट्रिप या इवेंट`, `ટ્રિપ કે ઇવેન્ટ`, `ट्रिप किंवा इव्हेंट`],
+  [`Try again`, `फिर कोशिश करें`, `ફરી પ્રયાસ કરો`, `पुन्हा प्रयत्न करा`],
+  [`Turn off app lock`, `ऐप लॉक बंद करें`, `ઍપ લૉક બંધ કરો`, `ॲप लॉक बंद करा`],
+  [`Turn on app lock`, `ऐप लॉक चालू करें`, `ઍપ લૉક ચાલુ કરો`, `ॲप लॉक चालू करा`],
+  [`Udhaar`, `उधार`, `ઉધાર`, `उधारी`],
+  [`Udhaar reminder`, `उधार रिमाइंडर`, `ઉધાર રિમાઇન્ડર`, `उधारी रिमाइंडर`],
+  [`Udhaar written off: {name}`, `उधार छोड़ दिया: {name}`, `ઉધાર જતું કર્યું: {name}`, `उधारी सोडून दिली: {name}`],
+  [`Undo`, `वापस लें`, `પાછું લો`, `पूर्ववत करा`],
+  [`Unlock`, `अनलॉक`, `અનલૉક`, `अनलॉक`],
+  [`Unlock Pocket Money`, `Pocket Money अनलॉक करें`, `Pocket Money અનલૉક કરો`, `Pocket Money अनलॉक करा`],
+  [`Update`, `अपडेट करें`, `અપડેટ કરો`, `अपडेट करा`],
+  [`Update available: v{v}`, `अपडेट आया है: v{v}`, `અપડેટ આવ્યું છે: v{v}`, `अपडेट उपलब्ध: v{v}`],
+  [`Update the app to link contacts`, `कॉन्टैक्ट जोड़ने के लिए ऐप अपडेट करें`, `કોન્ટેક્ટ જોડવા ઍપ અપડેટ કરો`, `कॉन्टॅक्ट जोडण्यासाठी ॲप अपडेट करा`],
+  [`Update the app to sign in with Google`, `Google से साइन इन के लिए ऐप अपडेट करें`, `Google સાથે સાઇન ઇન માટે ઍપ અપડેટ કરો`, `Google ने साइन इनसाठी ॲप अपडेट करा`],
+  [`Update the app to use Google Drive backup`, `Google Drive बैकअप के लिए ऐप अपडेट करें`, `Google Drive બેકઅપ માટે ઍપ અપડેટ કરો`, `Google Drive बॅकअपसाठी ॲप अपडेट करा`],
+  [`Update the app to use SMS auto-detect`, `SMS ऑटो-डिटेक्ट के लिए ऐप अपडेट करें`, `SMS ઑટો-ડિટેક્ટ માટે ઍપ અપડેટ કરો`, `SMS ऑटो-डिटेक्टसाठी ॲप अपडेट करा`],
+  [`Update the app to use app lock`, `ऐप लॉक के लिए ऐप अपडेट करें`, `ઍપ લૉક માટે ઍપ અપડેટ કરો`, `ॲप लॉकसाठी ॲप अपडेट करा`],
+  [`Update the app to use this`, `इसके लिए ऐप अपडेट करें`, `આ માટે ઍપ અપડેટ કરો`, `यासाठी ॲप अपडेट करा`],
+  [`Updated`, `बदल दिया`, `બદલાયું`, `बदललं`],
+  [`Updated to v{v} 🎉`, `v{v} में अपडेट हुआ 🎉`, `v{v}માં અપડેટ થયું 🎉`, `v{v} मध्ये अपडेट झालं 🎉`],
+  [`Use without an account`, `बिना अकाउंट के चलाएँ`, `એકાઉન્ટ વગર વાપરો`, `अकाउंटशिवाय वापरा`],
+  [`Use your fingerprint, face or phone PIN`, `फ़िंगरप्रिंट, चेहरा या फ़ोन PIN इस्तेमाल करें`, `ફિંગરપ્રિન્ટ, ચહેરો કે ફોન PIN વાપરો`, `फिंगरप्रिंट, चेहरा किंवा फोन PIN वापरा`],
+  [`Using the current version. We'll ask again next time.`, `यही वर्ज़न चल रहा है। अगली बार फिर पूछेंगे।`, `આ જ વર્ઝન ચાલે છે. આવતી વખતે ફરી પૂછીશું.`, `हेच व्हर्जन चालू आहे. पुढच्या वेळी पुन्हा विचारू.`],
+  [`WhatsApp reminder text`, `WhatsApp रिमाइंडर का मैसेज`, `WhatsApp રિમાઇન્ડરનો મેસેજ`, `WhatsApp रिमाइंडरचा मेसेज`],
+  [`Where it went`, `पैसा कहाँ गया`, `પૈસા ક્યાં ગયા`, `पैसे कुठे गेले`],
+  [`Who owes you? (optional)`, `आपको कौन देगा? (ज़रूरी नहीं)`, `તમને કોણ આપશે? (વૈકલ્પિક)`, `तुम्हाला कोण देणार? (ऐच्छिक)`],
+  [`Works in the phone app`, `फ़ोन ऐप में काम करता है`, `ફોન ઍપમાં ચાલે છે`, `फोन ॲपमध्ये चालतं`],
+  [`Works in the phone app: it reads your bank SMS there`, `फ़ोन ऐप में काम करता है: वहाँ बैंक SMS पढ़ता है`, `ફોન ઍપમાં ચાલે છે: ત્યાં બેંકના SMS વાંચે છે`, `फोन ॲपमध्ये चालतं: तिथे बँकेचे SMS वाचतं`],
+  [`Write off`, `छोड़ दें`, `જતું કરો`, `सोडून द्या`],
+  [`Write off {amt} from {name}? It will be added to your expenses.`, `{name} के {amt} छोड़ दें? यह आपके खर्च में जुड़ जाएगा।`, `{name}ના {amt} જતા કરવા છે? એ તમારા ખર્ચમાં ઉમેરાશે.`, `{name} चे {amt} सोडून द्यायचे? हे तुमच्या खर्चात जोडलं जाईल.`],
+  [`Written off and added to expenses. Lesson learnt? 😅`, `छोड़ दिया और खर्च में जोड़ दिया। सबक मिला? 😅`, `જતું કર્યું અને ખર્ચમાં ઉમેર્યું. પાઠ મળ્યો? 😅`, `सोडून दिलं आणि खर्चात जोडलं. धडा मिळाला? 😅`],
+  [`Written off {amt}`, `{amt} छोड़ दिए`, `{amt} જતા કર્યા`, `{amt} सोडून दिले`],
+  [`Written off: {amt}`, `छोड़ दिए: {amt}`, `જતા કર્યા: {amt}`, `सोडून दिले: {amt}`],
+  [`Yesterday`, `कल`, `ગઈ કાલે`, `काल`],
+  [`You can spend about {amt} a day till {date}.`, `{date} तक रोज़ लगभग {amt} खर्च कर सकते हैं।`, `{date} સુધી રોજ આશરે {amt} ખર્ચી શકો છો.`, `{date} पर्यंत रोज साधारण {amt} खर्च करू शकता.`],
+  [`You gave {amt}`, `आपने {amt} दिए`, `તમે {amt} આપ્યા`, `तुम्ही {amt} दिले`],
+  [`You gave {name} {amt}`, `आपने {name} को {amt} दिए`, `તમે {name}ને {amt} આપ્યા`, `तुम्ही {name} ला {amt} दिले`],
+  [`You owe`, `आपको देने हैं`, `તમારે આપવાના`, `तुम्हाला द्यायचे`],
+  [`You owe {name} {amt} today`, `आज आपको {name} को {amt} देने हैं`, `આજે તમારે {name}ને {amt} આપવાના છે`, `आज तुम्हाला {name} ला {amt} द्यायचे आहेत`],
+  [`You paid {name}`, `आपने {name} को दिए`, `તમે {name}ને આપ્યા`, `तुम्ही {name} ला दिले`],
+  [`You took {amt}`, `आपने {amt} लिए`, `તમે {amt} લીધા`, `तुम्ही {amt} घेतले`],
+  [`You took {amt} from {name}`, `आपने {name} से {amt} लिए`, `તમે {name} પાસેથી {amt} લીધા`, `तुम्ही {name} कडून {amt} घेतले`],
+  [`You'll get back`, `आपको वापस मिलेंगे`, `તમને પાછા મળશે`, `तुम्हाला परत मिळतील`],
+  [`Your data`, `आपका डेटा`, `તમારો ડેટા`, `तुमचा डेटा`],
+  [`Your data stays on this phone`, `आपका डेटा इसी फ़ोन पर रहता है`, `તમારો ડેટા આ ફોનમાં જ રહે છે`, `तुमचा डेटा याच फोनवर राहतो`],
+  [`Your data stays safe.`, `आपका डेटा सुरक्षित रहेगा।`, `તમારો ડેટા સુરક્ષિત રહેશે.`, `तुमचा डेटा सुरक्षित राहील.`],
+  [`Your data stays yours`, `आपका डेटा, सिर्फ़ आपका`, `તમારો ડેટા, ફક્ત તમારો`, `तुमचा डेटा, फक्त तुमचा`],
+  [`a day`, `प्रति दिन`, `રોજના`, `दररोज`],
+  [`backed up {when}`, `{when} बैकअप हुआ`, `{when} બેકઅપ થયો`, `{when} बॅकअप झाला`],
+  [`backing up…`, `बैकअप हो रहा है…`, `બેકઅપ થાય છે…`, `बॅकअप होतोय…`],
+  [`between`, `कुल`, `કુલ`, `एकूण`],
+  [`day`, `दिन`, `દિવસ`, `दिवस`],
+  [`day left`, `दिन बाकी`, `દિવસ બાકી`, `दिवस बाकी`],
+  [`days`, `दिन`, `દિવસ`, `दिवस`],
+  [`days left`, `दिन बाकी`, `દિવસ બાકી`, `दिवस बाकी`],
+  [`e.g. 20000`, `जैसे 20000`, `જેમ કે 20000`, `उदा. 20000`],
+  [`just now`, `अभी-अभी`, `હમણાં જ`, `आत्ताच`],
+  [`of {amt}`, `/ {amt}`, `/ {amt}`, `/ {amt}`],
+  [`others`, `और लोग`, `બીજા`, `इतर`],
+  [`people · your share`, `लोग · आपका हिस्सा`, `લોકો · તમારો ભાગ`, `जण · तुमचा वाटा`],
+  [`spend`, `खर्च`, `ખર્ચ`, `खर्च`],
+  [`spends`, `खर्च`, `ખર્ચ`, `खर्च`],
+  [`spent so far`, `अब तक खर्च`, `અત્યાર સુધી ખર્ચ`, `आतापर्यंत खर्च`],
+  [`spent today`, `आज खर्च`, `આજે ખર્ચ`, `आज खर्च`],
+  [`today {time}`, `आज {time}`, `આજે {time}`, `आज {time}`],
+  [`trips and events`, `ट्रिप और इवेंट`, `ટ્રિપ અને ઇવેન્ટ`, `ट्रिप आणि इव्हेंट`],
+  [`with {names}`, `{names} के साथ`, `{names} સાથે`, `{names} सोबत`],
+  [`you get`, `आपको मिलेंगे`, `તમને મળશે`, `तुम्हाला मिळतील`],
+  [`you owe`, `आपको देने हैं`, `તમારે આપવાના`, `तुम्हाला द्यायचे`],
+  [`your Google account`, `आपका Google अकाउंट`, `તમારું Google એકાઉન્ટ`, `तुमचं Google अकाउंट`],
+  [`{amt} a day`, `{amt} रोज़`, `રોજ {amt}`, `रोज {amt}`],
+  [`{amt} back`, `{amt} वापस`, `{amt} પાછા`, `{amt} परत`],
+  [`{amt} back. {left} left.`, `{amt} वापस। {left} बाकी।`, `{amt} પાછા. {left} બાકી.`, `{amt} परत. {left} बाकी.`],
+  [`{amt} left`, `{amt} बाकी`, `{amt} બાકી`, `{amt} बाकी`],
+  [`{amt} on {name} is kept out of this budget.`, `{name} के {amt} इस बजट से बाहर रखे गए हैं।`, `{name}ના {amt} આ બજેટની બહાર રાખ્યા છે.`, `{name} चे {amt} या बजेटबाहेर ठेवले आहेत.`],
+  [`{amt} over`, `{amt} ज़्यादा`, `{amt} વધારે`, `{amt} जास्त`],
+  [`{amt} paid`, `{amt} चुकाए`, `{amt} ચૂકવ્યા`, `{amt} फेडले`],
+  [`{amt} paid. {left} left.`, `{amt} चुकाए। {left} बाकी।`, `{amt} ચૂકવ્યા. {left} બાકી.`, `{amt} फेडले. {left} बाकी.`],
+  [`{amt} pending`, `{amt} बाकी`, `{amt} બાકી`, `{amt} बाकी`],
+  [`{amt} still to get`, `{amt} अभी लेने हैं`, `{amt} હજી લેવાના`, `{amt} अजून घ्यायचे`],
+  [`{amt} still to pay`, `{amt} अभी देने हैं`, `{amt} હજી આપવાના`, `{amt} अजून द्यायचे`],
+  [`{a} everyday + {b} {name}`, `{a} रोज़मर्रा + {b} {name}`, `{a} રોજિંદા + {b} {name}`, `{a} रोजचे + {b} {name}`],
+  [`{month} budget`, `{month} का बजट`, `{month}નું બજેટ`, `{month} चं बजेट`],
+  [`{name} is ready. Spends you add in these dates join it on their own.`, `{name} तैयार है। इन तारीखों में जोड़े गए खर्च अपने-आप इसमें आएँगे।`, `{name} તૈયાર છે. આ તારીખોમાં ઉમેરેલા ખર્ચ આપમેળે એમાં આવશે.`, `{name} तयार आहे. या तारखांमध्ये जोडलेले खर्च आपोआप यात येतील.`],
+  [`{name}, {amount} and {date} are filled in for you.`, `{name}, {amount} और {date} अपने-आप भर दिए जाते हैं।`, `{name}, {amount} અને {date} આપમેળે ભરાય છે.`, `{name}, {amount} आणि {date} आपोआप भरले जातात.`],
+  [`{n} day`, `{n} दिन`, `{n} દિવસ`, `{n} दिवस`],
+  [`{n} days`, `{n} दिन`, `{n} દિવસ`, `{n} दिवस`],
+  [`{n} days left in {month}`, `{month} में {n} दिन बाकी`, `{month}માં {n} દિવસ બાકી`, `{month} मध्ये {n} दिवस बाकी`],
+  [`{n} min ago`, `{n} मिनट पहले`, `{n} મિનિટ પહેલાં`, `{n} मिनिटांपूर्वी`],
+  [`{n} open`, `{n} बाकी`, `{n} બાકી`, `{n} बाकी`],
+  [`{n} shown`, `{n} दिख रहे`, `{n} દેખાય છે`, `{n} दिसत आहेत`],
+  [`{paid} back · {left} left`, `{paid} वापस · {left} बाकी`, `{paid} પાછા · {left} બાકી`, `{paid} परत · {left} बाकी`],
+  [`{title}: {total} split {n} ways, {share} each.`, `{title}: {total}, {n} लोगों में बँटा, हर एक के {share}।`, `{title}: {total}, {n} લોકોમાં વહેંચ્યા, દરેકના {share}.`, `{title}: {total}, {n} जणांत वाटले, प्रत्येकी {share}.`],
+  [`{who} each owe you {amt}. It's in Udhaar, with a reminder on {date}.`, `{who}, हर एक को आपको {amt} देने हैं। उधार में लिख दिया, {date} को रिमाइंडर।`, `{who}, દરેકે તમને {amt} આપવાના છે. ઉધારમાં લખ્યું, {date}એ રિમાઇન્ડર.`, `{who}, प्रत्येकाने तुम्हाला {amt} द्यायचे आहेत. उधारीत नोंदवलं, {date} ला रिमाइंडर.`],
+  [`{who} owes you {amt}. It's in Udhaar, with a reminder on {date}.`, `{who} को आपको {amt} देने हैं। उधार में लिख दिया, {date} को रिमाइंडर।`, `{who}એ તમને {amt} આપવાના છે. ઉધારમાં લખ્યું, {date}એ રિમાઇન્ડર.`, `{who} ने तुम्हाला {amt} द्यायचे आहेत. उधारीत नोंदवलं, {date} ला रिमाइंडर.`],
+  [`{who} still owe you {amt}`, `{who} को अभी आपको {amt} देने हैं`, `{who}એ હજી તમને {amt} આપવાના છે`, `{who} यांनी अजून तुम्हाला {amt} द्यायचे आहेत`],
+  [`{who} still owes you {amt}`, `{who} को अभी आपको {amt} देने हैं`, `{who}એ હજી તમને {amt} આપવાના છે`, `{who} ने अजून तुम्हाला {amt} द्यायचे आहेत`],
+  [`{who} will each owe you {amt}. Goes to Udhaar with a reminder.`, `{who}, हर एक को आपको {amt} देने होंगे। रिमाइंडर के साथ उधार में जाएगा।`, `{who}, દરેકે તમને {amt} આપવાના થશે. રિમાઇન્ડર સાથે ઉધારમાં જશે.`, `{who}, प्रत्येकाने तुम्हाला {amt} द्यायचे होतील. रिमाइंडरसह उधारीत जाईल.`],
+  [`{who} will owe you {amt}. Goes to Udhaar with a reminder.`, `{who} को आपको {amt} देने होंगे। रिमाइंडर के साथ उधार में जाएगा।`, `{who}એ તમને {amt} આપવાના થશે. રિમાઇન્ડર સાથે ઉધારમાં જશે.`, `{who} ने तुम्हाला {amt} द्यायचे होतील. रिमाइंडरसह उधारीत जाईल.`],
+];
+const TR = { hi: {}, gu: {}, mr: {} };
+TR_ROWS.forEach(([en, hi, gu, mr]) => { TR.hi[en] = hi; TR.gu[en] = gu; TR.mr[en] = mr; });
+
+// The witty lines, per language (same moments as LINES in the app script)
+const LINES_TR = {
+  hi: {
+    emptyAll: ['आपकी जेब कुछ ज़्यादा ही तंदुरुस्त लग रही है। 👀'],
+    emptyMonth: ['इस महीने कुछ खर्च नहीं? या तो आप संत हैं या लिखना भूल गए।'],
+    firstSave: ['पहला खर्च लिख लिया। अब आपकी जेब पर नज़र है।'],
+    overBudget: ['₹ बिल्डिंग छोड़ चुका है। बजट से {over} ज़्यादा।', 'बजट? अब हम उसे नहीं जानते। {over} ज़्यादा।', 'बस करो! बजट से {over} ऊपर।'],
+    budget80: ['बजट की साँस फूल रही है। {days} दिन के लिए {left} बचे।', '{days} दिन के लिए {left} बचे। थोड़ा धीरे। 🐢'],
+    food: ['इस हफ़्ते खाने पर {amt}। हम जज नहीं कर रहे। 👀', 'इस हफ़्ते खाने पर {amt}। पेट की तो मौज है।'],
+    coffee: ['इस हफ़्ते चाय-कॉफ़ी पर {amt}? बात करनी पड़ेगी। ☕', 'इस हफ़्ते {n} चाय ब्रेक। चाय पे चर्चा का खर्च {amt}।'],
+    weekend: ['आपके बटुए का वीकेंड काफ़ी बिज़ी रहा।', 'वीकेंड मज़ेदार था। बटुआ कह रहा है, आउच।'],
+    zeroDay: ['आज अभी तक कोई खर्च नहीं। सिक्के को आप पर गर्व है।', 'अब तक नो-स्पेंड डे। सिक्का जेब में ही रखिए।'],
+    general: ['जो रुपया आप लिखते हैं, वो रुपया आप समझते हैं।', 'छोटे खर्च मिलकर बड़े बनते हैं। आप उन पर नज़र रख रहे हैं।', 'चिल्लर भी काउंट होता है।'],
+    udhaarEmpty: ['कोई उधार नहीं। आपकी दोस्तियाँ पैसों से भी मज़बूत हैं।'],
+    allSettled: ['सारा हिसाब बराबर। दोस्ती का स्टेटस: बढ़िया।'],
+    nudge: ['जल्दी बताइए: आज का दिन कितने का पड़ा?', 'आज के खर्च याद से उड़ने से पहले लिख लीजिए।', 'आज का हिसाब? 30 सेकंड, पक्का।'],
+  },
+  gu: {
+    emptyAll: ['તમારું ખિસ્સું કંઈક વધારે જ તંદુરસ્ત લાગે છે. 👀'],
+    emptyMonth: ['આ મહિને કંઈ ખર્ચ નહીં? કાં તો તમે સાધુ છો, કાં લખવાનું ભૂલી ગયા.'],
+    firstSave: ['પહેલો ખર્ચ લખાઈ ગયો. હવે તમારા ખિસ્સા પર નજર છે.'],
+    overBudget: ['₹ તો બિલ્ડિંગ છોડી ગયો. બજેટથી {over} વધારે.', 'બજેટ? હવે અમે એને ઓળખતા નથી. {over} વધારે.', 'બસ કરો! બજેટથી {over} ઉપર.'],
+    budget80: ['બજેટનો શ્વાસ ફૂલે છે. {days} દિવસ માટે {left} બાકી.', '{days} દિવસ માટે {left} બાકી. જરા ધીમે. 🐢'],
+    food: ['આ અઠવાડિયે ખાવા પર {amt}. અમે જજ નથી કરતા. 👀', 'આ અઠવાડિયે ખાવા પર {amt}. પેટને તો જલસા છે.'],
+    coffee: ['આ અઠવાડિયે ચા-કૉફી પર {amt}? વાત કરવી પડશે. ☕', 'આ અઠવાડિયે {n} ચા બ્રેક. ચાની ચર્ચાનો ખર્ચ {amt}.'],
+    weekend: ['તમારા પાકીટનો વીકએન્ડ બહુ વ્યસ્ત રહ્યો.', 'વીકએન્ડ મજાનો હતો. પાકીટ કહે છે, ઓચ.'],
+    zeroDay: ['આજે હજી કોઈ ખર્ચ નહીં. સિક્કાને તમારા પર ગર્વ છે.', 'અત્યાર સુધી નો-સ્પેન્ડ ડે. સિક્કો ખિસ્સામાં જ રાખો.'],
+    general: ['જે રૂપિયો તમે લખો છો, એ રૂપિયો તમે સમજો છો.', 'નાના ખર્ચ ભેગા થઈને મોટા થાય છે. તમે એના પર નજર રાખો છો.', 'પરચૂરણ પણ ગણાય છે.'],
+    udhaarEmpty: ['કોઈ ઉધાર નહીં. તમારી દોસ્તી પૈસાથી પણ મજબૂત છે.'],
+    allSettled: ['બધો હિસાબ સરખો. દોસ્તીનું સ્ટેટસ: ઉત્તમ.'],
+    nudge: ['ઝટ કહો: આજનો દિવસ કેટલામાં પડ્યો?', 'આજના ખર્ચ યાદમાંથી ઊડી જાય એ પહેલાં લખી લો.', 'આજનો હિસાબ? 30 સેકન્ડ, પાક્કું.'],
+  },
+  mr: {
+    emptyAll: ['तुमचा खिसा जरा जास्तच तब्येतीत दिसतोय. 👀'],
+    emptyMonth: ['या महिन्यात काहीच खर्च नाही? एकतर तुम्ही संत आहात, नाहीतर लिहायला विसरलात.'],
+    firstSave: ['पहिला खर्च नोंदवला. आता तुमच्या खिशावर लक्ष आहे.'],
+    overBudget: ['₹ इमारत सोडून गेला. बजेटपेक्षा {over} जास्त.', 'बजेट? आता आम्ही तिला ओळखत नाही. {over} जास्त.', 'बस करा! बजेटपेक्षा {over} वर.'],
+    budget80: ['बजेटला धाप लागलीय. {days} दिवसांसाठी {left} उरले.', '{days} दिवसांसाठी {left} उरले. जरा हळू. 🐢'],
+    food: ['या आठवड्यात जेवणावर {amt}. आम्ही जज करत नाही. 👀', 'या आठवड्यात जेवणावर {amt}. पोटाची तर चंगळ आहे.'],
+    coffee: ['या आठवड्यात चहा-कॉफीवर {amt}? बोलावं लागेल. ☕', 'या आठवड्यात {n} चहा ब्रेक. चहावरच्या गप्पांचा खर्च {amt}.'],
+    weekend: ['तुमच्या पाकिटाचा वीकेंड खूप बिझी गेला.', 'वीकेंड मजेत गेला. पाकीट म्हणतंय, आई गं.'],
+    zeroDay: ['आज अजून एकही खर्च नाही. नाण्याला तुमचा अभिमान आहे.', 'आतापर्यंत नो-स्पेंड डे. नाणं खिशातच ठेवा.'],
+    general: ['जो रुपया तुम्ही लिहिता, तो रुपया तुम्हाला समजतो.', 'छोटे खर्च मिळून मोठे होतात. तुम्ही त्यांच्यावर लक्ष ठेवताय.', 'चिल्लरही मोजली जाते.'],
+    udhaarEmpty: ['कोणतीही उधारी नाही. तुमची मैत्री पैशांपेक्षाही पक्की आहे.'],
+    allSettled: ['सगळा हिशोब पूर्ण. मैत्रीचं स्टेटस: उत्तम.'],
+    nudge: ['पटकन सांगा: आजचा दिवस किती पडला?', 'आजचे खर्च विसरण्याआधी लिहून ठेवा.', 'आजचा हिशोब? 30 सेकंद, नक्की.'],
+  },
+};
+</script>
+<script>
 // Lucide icons (ISC licence, lucide.dev), inner SVG markup only
-const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />","lock":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />","logout":"<path d=\"m16 17 5-5-5-5\" /><path d=\"M21 12H9\" /><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />","event":"<path d=\"M5.8 11.3 2 22l10.7-3.79\" /><path d=\"M4 3h.01\" /><path d=\"M22 8h.01\" /><path d=\"M15 2h.01\" /><path d=\"M22 20h.01\" /><path d=\"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10\" /><path d=\"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17\" /><path d=\"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7\" /><path d=\"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z\" />","stay":"<path d=\"M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8\" /><path d=\"M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4\" /><path d=\"M12 4v6\" /><path d=\"M2 18h20\" />","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /><circle cx=\"9\" cy=\"7\" r=\"4\" />"};
+const ICONS = {"home":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" /><path d=\"M12 7v5l4 2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","udhaar":"<path d=\"m11 17 2 2a1 1 0 1 0 3-3\" /><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\" /><path d=\"m21 3 1 11h-2\" /><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\" /><path d=\"M3 4h8\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /><circle cx=\"12\" cy=\"12\" r=\"3\" />","food":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\" /><path d=\"M7 2v20\" /><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\" />","groceries":"<path d=\"m15 11-1 9\" /><path d=\"m19 11-4-7\" /><path d=\"M2 11h20\" /><path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /><path d=\"M4.5 15.5h15\" /><path d=\"m5 11 4-7\" /><path d=\"m9 11 1 9\" />","travel":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","shopping":"<path d=\"M16 10a4 4 0 0 1-8 0\" /><path d=\"M3.103 6.034h17.794\" /><path d=\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\" />","bills":"<path d=\"M12 17V7\" /><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\" /><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\" />","health":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","fun":"<path d=\"m12.296 3.464 3.02 3.956\" /><path d=\"M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z\" /><path d=\"M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /><path d=\"m6.18 5.276 3.1 3.899\" />","other":"<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /><path d=\"M12 22V12\" /><polyline points=\"3.29 7 12 12 20.71 7\" /><path d=\"m7.5 4.27 9 5.15\" />","cash":"<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /><circle cx=\"12\" cy=\"12\" r=\"2\" /><path d=\"M6 12h.01M18 12h.01\" />","card":"<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /><line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" /><path d=\"M6 14h2\" />","upi":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\" /><path d=\"M12 18h.01\" />","download":"<path d=\"M12 15V3\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><path d=\"m7 10 5 5 5-5\" />","search":"<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />","bell":"<path d=\"M10.268 21a2 2 0 0 0 3.464 0\" /><path d=\"M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326\" />","left":"<path d=\"m15 18-6-6 6-6\" />","right":"<path d=\"m9 18 6-6-6-6\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","trash":"<path d=\"M10 11v6\" /><path d=\"M14 11v6\" /><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /><path d=\"M3 6h18\" /><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /><path d=\"m15 5 4 4\" />","chat":"<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />","gave":"<path d=\"M7 7h10v10\" /><path d=\"M7 17 17 7\" />","took":"<path d=\"M17 7 7 17\" /><path d=\"M17 17H7V7\" />","wallet":"<path d=\"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1\" /><path d=\"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4\" />","calendar":"<path d=\"M8 2v3\" /><path d=\"M16 2v3\" /><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /><path d=\"M3 9h18\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /><path d=\"M20 2v4\" /><path d=\"M22 4h-4\" /><circle cx=\"4\" cy=\"20\" r=\"2\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","userplus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"M12 16v-4\" /><path d=\"M12 8h.01\" />","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />","upload":"<path d=\"M12 3v12\" /><path d=\"m17 8-5-5-5 5\" /><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />","restart":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","shield":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /><path d=\"m9 12 2 2 4-4\" />","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />","clouddown":"<path d=\"M12 13v8l-4-4\" /><path d=\"m12 21 4-4\" /><path d=\"M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284\" />","lock":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /><path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />","logout":"<path d=\"m16 17 5-5-5-5\" /><path d=\"M21 12H9\" /><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />","event":"<path d=\"M5.8 11.3 2 22l10.7-3.79\" /><path d=\"M4 3h.01\" /><path d=\"M22 8h.01\" /><path d=\"M15 2h.01\" /><path d=\"M22 20h.01\" /><path d=\"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10\" /><path d=\"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17\" /><path d=\"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7\" /><path d=\"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z\" />","stay":"<path d=\"M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8\" /><path d=\"M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4\" /><path d=\"M12 4v6\" /><path d=\"M2 18h20\" />","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /><circle cx=\"9\" cy=\"7\" r=\"4\" />","globe":"<path d=\"m5 8 6 6\" /><path d=\"m4 14 6-6 2-3\" /><path d=\"M2 5h12\" /><path d=\"M7 2h1\" /><path d=\"m22 22-5-10-5 10\" /><path d=\"M14 18h6\" />"};
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const KEY = 'kharcha.v1'; // storage key kept from the first version so existing data survives
 const REMOTE = 'https://imshyamalbhatt.github.io/kharcha/';
@@ -602,7 +1035,7 @@ const byNewest = (a, b) => b.date.localeCompare(a.date) || b.createdAt - a.creat
 const catIcon = c => icon((CATS.find(x => x[0] === c) || CATS[CATS.length - 1])[1]);
 const modeIcon = m => icon((MODES.find(x => x.id === m) || {}).ic, 'mode-ic');
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-const shortDate = d => { const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); };
+const shortDate = d => { const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString(LOC(), { day: 'numeric', month: 'short' }); };
 
 const demo = window.self !== window.top || /[?&]demo=1/.test(location.search); // preview frame or ?demo=1
 const fresh = /[?&]fresh=1/.test(location.search);  // preview of a brand-new install
@@ -610,6 +1043,23 @@ const native = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.is
 
 // Empty states: one line icon in a soft green circle
 const emptyIcon = n => `<div class="empty-ico">${icon(n)}</div>`;
+
+// ---------- languages: English, हिन्दी, ગુજરાતી, मराठी ----------
+// The English text is the key: tr('Add expense') looks it up in TR[LANG] (the translations script
+// above) and falls back to English. {name} placeholders are filled from vars. Static HTML text,
+// placeholders and labels are translated by translateStatic(). Stored data (categories, modes) stays English.
+const LANGS = [['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી'], ['mr', 'मराठी']];
+var LANG = 'en';
+function tr(s, vars) {
+  const out = (LANG !== 'en' && TR[LANG] && TR[LANG][s]) || s;
+  return vars ? out.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '') : out;
+}
+const LOC = () => LANG === 'en' ? 'en-IN' : LANG + '-IN-u-nu-latn'; // dates in the language, digits stay 0-9
+const plural = (n, one, many, vars = {}) => tr(n === 1 ? one : many, { n, ...vars });
+function phoneLang() {
+  for (const l of (navigator.languages || [navigator.language || ''])) { const c = String(l).slice(0, 2).toLowerCase(); if (TR[c]) return c; }
+  return 'en';
+}
 
 // ---------- witty lines (see the brand doc's copy bank) ----------
 const LINES = {
@@ -631,12 +1081,14 @@ const lineCache = {};
 // Picks one line per moment and keeps it for the day, so the screen doesn't change on every tap.
 function line(key, vars = {}, stableId = '') {
   const id = key + '|' + stableId + '|' + today();
-  if (!(id in lineCache)) { const opts = LINES[key]; lineCache[id] = opts[Math.floor(Math.random() * opts.length)]; }
-  return lineCache[id].replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+  if (!(id in lineCache)) lineCache[id] = Math.random();
+  const opts = (LANG !== 'en' && LINES_TR[LANG] && LINES_TR[LANG][key]) || LINES[key];
+  return opts[Math.floor(lineCache[id] * opts.length)].replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
 
 // ---------- storage ----------
 let db = load();
+LANG = (location.search.match(/[?&]lang=(en|hi|gu|mr)\b/) || [])[1] || db.settings.lang || phoneLang(); // chosen in Settings; until then, the phone's language if we have it (?lang= is for testing)
 function load() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
@@ -748,7 +1200,7 @@ let form = { id: null, expr: '', mode: 'UPI', category: 'Other', names: [] };
 
 function monthLabel(m) {
   const [y, mo] = m.split('-').map(Number);
-  return new Date(y, mo - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  return new Date(y, mo - 1, 1).toLocaleDateString(LOC(), { month: 'long', year: 'numeric' });
 }
 function shiftMonth(delta) {
   let [y, m] = viewMonth.split('-').map(Number);
@@ -761,19 +1213,32 @@ function shiftMonth(delta) {
 const monthItems = () => db.expenses.filter(e => e.date.startsWith(viewMonth)).sort(byNewest);
 
 function dayLabel(d) {
-  if (d === today()) return 'Today';
-  if (d === addDays(-1)) return 'Yesterday';
+  if (d === today()) return tr('Today');
+  if (d === addDays(-1)) return tr('Yesterday');
   const [yy, mm, dd] = d.split('-').map(Number);
-  return new Date(yy, mm - 1, dd).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  return new Date(yy, mm - 1, dd).toLocaleDateString(LOC(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function itemHTML(e, withDate, hideEvent) {
   const ev = !hideEvent && e.event && evName(e.event);
-  const meta = [withDate ? dayLabel(e.date) : '', `${modeIcon(e.mode)} ${e.mode}`, ev ? `${icon('event', 'mode-ic')} ${esc(ev)}` : e.category, e.note ? esc(e.note) : ''].filter(Boolean).join(' · ');
+  const meta = [withDate ? dayLabel(e.date) : '', `${modeIcon(e.mode)} ${tr(e.mode)}`, ev ? `${icon('event', 'mode-ic')} ${esc(ev)}` : tr(e.category), e.note ? esc(noteText(e.note)) : ''].filter(Boolean).join(' · ');
   return `<div class="item" data-id="${e.id}">
     <div class="ico">${catIcon(e.category)}</div>
     <div class="mid"><div class="t">${esc(e.title)}</div><div class="m">${meta}</div></div>
     <div class="a">${money(e.amount)}</div></div>`;
+}
+
+// Notes the app wrote itself are stored in English and shown in the chosen language
+function noteText(n) {
+  if (LANG === 'en' || !n) return n;
+  return n.split(' · ').map(p => {
+    let m;
+    if (p === 'From SMS') return tr('From SMS');
+    if ((m = /^Split (\d+) ways, total (.+)$/.exec(p))) return tr('Split {n} ways, total {total}', { n: m[1], total: m[2] });
+    if ((m = /^with (.+)$/.exec(p))) return tr('with {names}', { names: m[1] });
+    if ((m = /^Split: (.+)$/.exec(p))) return tr('Split: {title}', { title: m[1] });
+    return p;
+  }).join(' · ');
 }
 
 // ---------- trips & events: one-off spends kept out of the monthly budget ----------
@@ -785,12 +1250,12 @@ const eventFor = d => db.events.filter(v => v.start <= d && d <= v.end).sort((a,
 const dayDiff = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5);
 const evItems = id => db.expenses.filter(e => e.event === id).sort(byNewest);
 const evDates = v => v.start === v.end ? shortDate(v.start) : `${shortDate(v.start)} – ${shortDate(v.end)}`;
-const listNames = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+const listNames = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + tr(' and ') + a[a.length - 1];
 function evStatus(v) {
   const t = today(), days = dayDiff(v.start, v.end) + 1;
-  if (t < v.start) { const n = dayDiff(t, v.start); return n === 1 ? 'Starts tomorrow' : `Starts in ${n} days`; }
-  if (t > v.end) return `${days} day${days === 1 ? '' : 's'}`;
-  return `Day ${dayDiff(v.start, t) + 1} of ${days}`;
+  if (t < v.start) { const n = dayDiff(t, v.start); return n === 1 ? tr('Starts tomorrow') : tr('Starts in {n} days', { n }); }
+  if (t > v.end) return plural(days, '{n} day', '{n} days');
+  return tr('Day {d} of {n}', { d: dayDiff(v.start, t) + 1, n: days });
 }
 // full: the History view of one event (stats, categories, who still owes you); else the small Home card
 function eventCard(v, full) {
@@ -800,25 +1265,26 @@ function eventCard(v, full) {
   const perDay = daysSoFar && total ? Math.round(total / daysSoFar) : 0;
   let h = `<div class="card ev-card"${full ? '' : ` data-event="${v.id}"`}>
     <div class="card-head"><span class="label">${icon('event', 'mode-ic')} ${esc(v.name)} · ${evStatus(v)}</span>
-      ${full ? `<button class="link-btn" data-evedit="${v.id}">Edit</button>` : `<span class="link-btn">Open ${icon('right')}</span>`}</div>`;
-  let note = evDates(v) + (perDay ? ` · ${money(perDay)} a day` : '');
+      ${full ? `<button class="link-btn" data-evedit="${v.id}">${tr('Edit')}</button>` : `<span class="link-btn">${tr('Open')} ${icon('right')}</span>`}</div>`;
+  let note = evDates(v) + (perDay ? ' · ' + tr('{amt} a day', { amt: money(perDay) }) : '');
   if (v.budget > 0) {
     const left = round2(v.budget - total), pct = Math.min(100, total / v.budget * 100);
     const color = left < 0 ? 'var(--coral)' : pct >= 80 ? 'var(--warn)' : 'var(--pm)';
-    h += `<div class="big ${left < 0 ? 'over' : ''}">${money(total)}<small class="of"> of ${money(v.budget)}</small></div>
+    h += `<div class="big ${left < 0 ? 'over' : ''}">${money(total)}<small class="of"> ${tr('of {amt}', { amt: money(v.budget) })}</small></div>
       <div class="progress"><div style="width:${pct}%;background:${color}"></div></div>`;
-    note += left < 0 ? ` · <span class="over">${money(-left)} over</span>` : ` · ${money(left)} left`;
+    note += left < 0 ? ` · <span class="over">${tr('{amt} over', { amt: money(-left) })}</span>` : ' · ' + tr('{amt} left', { amt: money(left) });
   } else h += `<div class="big">${money(total)}</div>`;
   h += `<div class="sub">${note}</div>`;
   if (full) {
-    h += `<div class="stats" style="margin-top:12px"><div><b>${items.length}</b><span>spend${items.length === 1 ? '' : 's'}</span></div>
-      <div><b>${days}</b><span>day${days === 1 ? '' : 's'}</span></div><div><b>${money(perDay)}</b><span>a day</span></div></div>`;
+    h += `<div class="stats" style="margin-top:12px"><div><b>${items.length}</b><span>${items.length === 1 ? tr('spend') : tr('spends')}</span></div>
+      <div><b>${days}</b><span>${days === 1 ? tr('day') : tr('days')}</span></div><div><b>${money(perDay)}</b><span>${tr('a day')}</span></div></div>`;
     const cats = CATS.map(([c, ic]) => ({ c, ic, s: sum(items.filter(e => e.category === c)) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
-    if (cats.length) h += cats.slice(0, 4).map(x => `<div class="bar-row"><div class="ico">${icon(x.ic)}</div><span>${x.c}</span><div class="bar"><div style="width:${x.s / cats[0].s * 100}%"></div></div><b>${money(x.s)}</b></div>`).join('');
+    if (cats.length) h += cats.slice(0, 4).map(x => `<div class="bar-row"><div class="ico">${icon(x.ic)}</div><span>${tr(x.c)}</span><div class="bar"><div style="width:${x.s / cats[0].s * 100}%"></div></div><b>${money(x.s)}</b></div>`).join('');
     const owe = UDHAAR ? db.loans.filter(l => l.event === v.id && l.type === 'gave' && isOpen(l)) : [];
     if (owe.length) {
       const names = [...new Set(owe.map(l => l.person.trim()))];
-      h += `<div class="tip" data-go="udhaar" style="cursor:pointer">${icon('users')}<span>${esc(listNames(names.length > 3 ? [...names.slice(0, 3), 'others'] : names))} still owe${names.length === 1 ? 's' : ''} you <b>${money(sum(owe.map(l => ({ amount: leftOf(l) }))))}</b></span></div>`;
+      const who = esc(listNames(names.length > 3 ? [...names.slice(0, 3), tr('others')] : names)), amt = `<b>${money(sum(owe.map(l => ({ amount: leftOf(l) }))))}</b>`;
+      h += `<div class="tip" data-go="udhaar" style="cursor:pointer">${icon('users')}<span>${names.length === 1 ? tr('{who} still owes you {amt}', { who, amt }) : tr('{who} still owe you {amt}', { who, amt })}</span></div>`;
     }
   }
   return h + '</div>';
@@ -826,7 +1292,7 @@ function eventCard(v, full) {
 let evId = null;
 function openEventForm(v) {
   evId = v ? v.id : null;
-  $('#evTitle').textContent = v ? 'Edit trip or event' : 'New trip or event';
+  $('#evTitle').textContent = v ? tr('Edit trip or event') : tr('New trip or event');
   $('#evName').value = v ? v.name : '';
   $('#evStart').value = v ? v.start : today();
   $('#evEnd').value = v ? v.end : addDays(2);
@@ -836,9 +1302,9 @@ function openEventForm(v) {
 }
 function saveEvent() {
   const name = $('#evName').value.trim(), start = $('#evStart').value, end = $('#evEnd').value;
-  if (!name) { toast('Give it a name, e.g. Goa trip'); $('#evName').focus(); return; }
-  if (!start || !end) return toast('Pick the dates');
-  if (end < start) return toast('The end date is before the start date');
+  if (!name) { toast(tr('Give it a name, e.g. Goa trip')); $('#evName').focus(); return; }
+  if (!start || !end) return toast(tr('Pick the dates'));
+  if (end < start) return toast(tr('The end date is before the start date'));
   const b = calc(cleanAmount($('#evBudget').value));
   const old = evId && evById(evId);
   const v = old || { id: uid(), createdAt: Date.now() };
@@ -848,22 +1314,22 @@ function saveEvent() {
   tab = 'history'; histEvent = v.id; histMode = 'All'; render(); window.scrollTo(0, 0);
   // spends already logged in these dates: offer to move them in (one could be rent, so ask)
   const loose = db.expenses.filter(e => !e.event && e.date >= start && e.date <= end);
-  if (!loose.length) return toast(old ? 'Updated' : `${name} is ready. Spends you add in these dates join it on their own.`);
+  if (!loose.length) return toast(old ? tr('Updated') : tr('{name} is ready. Spends you add in these dates join it on their own.', { name }));
   setTimeout(async () => {
-    if (!(await ask(`Add the ${loose.length} spend${loose.length === 1 ? '' : 's'} already logged in these dates to ${name}? You can untag any of them later.`, 'Add them', 'primary'))) return;
+    if (!(await ask(plural(loose.length, 'Add the 1 spend already logged in these dates to {name}? You can untag it later.', 'Add the {n} spends already logged in these dates to {name}? You can untag any of them later.', { name }), tr('Add them'), 'primary'))) return;
     loose.forEach(e => { e.event = v.id; });
-    save(); render(); toast(`Added ${loose.length} to ${name}`);
+    save(); render(); toast(tr('Added {n} to {name}', { n: loose.length, name }));
   }, 300);
 }
 async function deleteEvent() {
   const v = evById(evId); if (!v) return;
   const n = evItems(v.id).length;
-  if (!(await ask(`Delete ${v.name}?${n ? ` Its ${n} spend${n === 1 ? '' : 's'} stay, just without the tag.` : ''}`, 'Delete'))) return;
+  if (!(await ask(tr('Delete {name}?', { name: v.name }) + (n ? ' ' + plural(n, 'Its 1 spend stays, just without the tag.', 'Its {n} spends stay, just without the tag.') : ''), tr('Delete')))) return;
   db.expenses.forEach(e => { if (e.event === v.id) delete e.event; });
   db.loans.forEach(l => { if (l.event === v.id) delete l.event; });
   db.events = db.events.filter(x => x !== v);
   if (histEvent === v.id) histEvent = null;
-  save(); closeSheets(); render(); toast('Deleted');
+  save(); closeSheets(); render(); toast(tr('Deleted'));
 }
 
 // ---------- udhaar helpers ----------
@@ -896,12 +1362,14 @@ function waPhone(raw) {
 }
 function waLink(l) {
   const c = contactOf(l.person);
-  const msg = (db.settings.waText || WA_DEFAULT)
+  const msg = waTemplate()
     .replace(/\{name\}/g, (c ? c.name : l.person).trim().split(' ')[0])
     .replace(/\{amount\}/g, money(leftOf(l)))
     .replace(/\{date\}/g, shortDate(l.date));
   return `https://wa.me/${c ? c.phone : ''}?text=` + encodeURIComponent(msg);
 }
+// The default reminder follows the app language; a text the user wrote is sent as written.
+const waTemplate = () => !db.settings.waText || db.settings.waText === WA_DEFAULT ? tr(WA_DEFAULT) : db.settings.waText;
 // Link an udhaar person to one phone contact, using Android's own picker (no contacts permission).
 async function linkContact(person) {
   let c;
@@ -909,11 +1377,11 @@ async function linkContact(person) {
     try { skipNextLock(); c = await Capacitor.Plugins.ContactPicker.pick(); } catch (e) { return false; } // cancelled
   } else if (demo || !native) {
     c = { name: `${person.trim()} (demo contact)`, phone: '9800000000' };
-    toast('On the phone, your contact list opens here');
-  } else { toast('Update the app to link contacts'); return false; }
+    toast(tr('On the phone, your contact list opens here'));
+  } else { toast(tr('Update the app to link contacts')); return false; }
   db.contacts[personKey(person)] = { name: c.name, phone: waPhone(c.phone) };
   save(); render();
-  toast(`Linked to ${c.name}'s WhatsApp`);
+  toast(tr("Linked to {name}'s WhatsApp", { name: c.name }));
   return true;
 }
 function openExternal(url) {
@@ -999,10 +1467,10 @@ function parseSms(body, address) {
 // access until the user allows it once in phone settings, so the permission prompt is refused
 // silently. Walk them through it instead of a vague error.
 function smsBlockedHelp() {
-  const steps = ['Open your phone <b>Settings → Apps → Pocket Money</b>', 'Tap <b>⋮</b> (top right) → <b>Allow restricted settings</b>', 'Tap <b>Permissions → SMS → Allow</b>', 'Come back and turn on <b>Auto-detect from SMS</b>'];
+  const steps = [tr('Open your phone <b>Settings → Apps → Pocket Money</b>'), tr('Tap <b>⋮</b> (top right) → <b>Allow restricted settings</b>'), tr('Tap <b>Permissions → SMS → Allow</b>'), tr('Come back and turn on <b>Auto-detect from SMS</b>')];
   dialog({
-    title: 'Allow SMS access',
-    body: `<p>Android protects SMS for apps installed outside the Play Store. Allow it once:</p>
+    title: tr('Allow SMS access'),
+    body: `<p>${tr('Android protects SMS for apps installed outside the Play Store. Allow it once:')}</p>
       <ol style="margin:0;padding-left:20px">${steps.map(s => `<li style="margin:4px 0">${s}</li>`).join('')}</ol>`,
   });
 }
@@ -1036,7 +1504,7 @@ async function scanSms(quiet) {
     db.smsSeen = [...seen].slice(-3000);
     db.smsSince = newest;
     save();
-    if (found) { render(); if (!quiet) toast(`Found ${found} spend${found === 1 ? '' : 's'} in your SMS`); }
+    if (found) { render(); if (!quiet) toast(plural(found, 'Found 1 spend in your SMS', 'Found {n} spends in your SMS')); }
   } catch (e) {
     if (e && e.code === 'DENIED') { db.settings.sms = false; save(); smsBlockedHelp(); }
   } finally { scanning = false; }
@@ -1055,16 +1523,16 @@ async function setupSmsAuto() {
 function pendingCard() {
   if (!db.pending.length) return '';
   const list = [...db.pending].sort((a, b) => b.at - a.at);
-  return `<div class="card"><div class="card-head"><span class="label">${icon('sparkles', 'mode-ic')} Found in your SMS · ${list.length}</span>
-      <button class="link-btn" data-pall>Add all</button></div>` +
+  return `<div class="card"><div class="card-head"><span class="label">${icon('sparkles', 'mode-ic')} ${tr('Found in your SMS')} · ${list.length}</span>
+      <button class="link-btn" data-pall>${tr('Add all')}</button></div>` +
     list.slice(0, 5).map(p => `<div class="item" data-pedit="${esc(p.id)}">
       <div class="ico">${catIcon(p.category)}</div>
       <div class="mid"><div class="t">${esc(p.title)}</div>
-        <div class="m">${modeIcon(p.mode)} ${p.mode} · ${dayLabel(p.date)}${p.dupOf ? ` · <span class="over">Maybe added as "${esc(p.dupOf)}"</span>` : ''}</div></div>
+        <div class="m">${modeIcon(p.mode)} ${tr(p.mode)} · ${dayLabel(p.date)}${p.dupOf ? ` · <span class="over">${tr('Maybe added as "{title}"', { title: esc(p.dupOf) })}</span>` : ''}</div></div>
       <div class="a">${money(p.amount)}</div>
-      <button class="close" data-pno="${esc(p.id)}" aria-label="Ignore">${icon('x')}</button>
-      <button class="close" data-pok="${esc(p.id)}" aria-label="Add" style="background:var(--pm);color:#fff">${icon('check')}</button>
-    </div>`).join('') + (list.length > 5 ? `<div class="sub" style="padding-top:8px">+ ${list.length - 5} more after these</div>` : '') + '</div>';
+      <button class="close" data-pno="${esc(p.id)}" aria-label="${tr('Ignore')}">${icon('x')}</button>
+      <button class="close" data-pok="${esc(p.id)}" aria-label="${tr('Add')}" style="background:var(--pm);color:#fff">${icon('check')}</button>
+    </div>`).join('') + (list.length > 5 ? `<div class="sub" style="padding-top:8px">${tr('+ {n} more after these', { n: list.length - 5 })}</div>` : '') + '</div>';
 }
 function learnPayee(p, title, category) {
   db.payeeCats[p.payeeKey] = category;
@@ -1078,13 +1546,13 @@ function acceptPending(id, quiet) {
   learnPayee(p, p.title, p.category);
   db.pending = db.pending.filter(x => x.id !== id);
   save();
-  if (!quiet) { render(); toast(`Added ${p.title} · ${money(p.amount)}`); }
+  if (!quiet) { render(); toast(tr('Added {title} · {amt}', { title: p.title, amt: money(p.amount) })); }
 }
 function ignorePending(id) {
   const p = db.pending.find(x => x.id === id);
   db.pending = db.pending.filter(x => x.id !== id);
   save(); render();
-  if (p) toast('Ignored', { label: 'Undo', fn: () => { db.pending.push(p); save(); render(); } });
+  if (p) toast(tr('Ignored'), { label: tr('Undo'), fn: () => { db.pending.push(p); save(); render(); } });
 }
 
 // ---------- dashboard ----------
@@ -1119,15 +1587,15 @@ function renderHome() {
   const daysInMonth = new Date(y, m, 0).getDate();
   const daysSoFar = isCur ? Number(t.slice(8)) : (viewMonth < curMonth ? daysInMonth : 0);
   const daysLeft = isCur ? daysInMonth - Number(t.slice(8)) + 1 : 0;
-  const monthName = new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long' });
+  const monthName = new Date(y, m - 1, 1).toLocaleDateString(LOC(), { month: 'long' });
   let h = '';
 
   // 1. Today (current month only)
   if (isCur) {
     const tt = sum(db.expenses.filter(e => e.date === t));
     h += `<div class="hero">
-      <div class="when">Today · ${new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
-      <div class="amt">${money(tt)}<small>spent today</small></div>
+      <div class="when">${tr('Today')} · ${new Date().toLocaleDateString(LOC(), { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+      <div class="amt">${money(tt)}<small>${tr('spent today')}</small></div>
       <div class="quip">${esc(db.expenses.length ? quip(items) : line('emptyAll'))}</div>
     </div>`;
   }
@@ -1141,38 +1609,39 @@ function renderHome() {
   // 2. Budget: always shown, with days left in the month. Trip / event spends stay out of it.
   const everyday = sum(items.filter(e => !e.event)), evSpend = round2(total - everyday);
   const evNames = [...new Set(items.filter(e => e.event).map(e => evName(e.event)).filter(Boolean))];
-  const evLabel = evNames.length === 1 ? evNames[0] : 'trips and events';
-  h += `<div class="card"><div class="card-head"><span class="label">${monthName} budget</span>
-    <button class="link-btn" data-budget>${db.budget > 0 ? 'Edit' : ''}</button></div>`;
+  const evLabel = evNames.length === 1 ? evNames[0] : tr('trips and events');
+  h += `<div class="card"><div class="card-head"><span class="label">${tr('{month} budget', { month: monthName })}</span>
+    <button class="link-btn" data-budget>${db.budget > 0 ? tr('Edit') : ''}</button></div>`;
   if (db.budget > 0) {
     const left = round2(db.budget - everyday), pct = Math.min(100, everyday / db.budget * 100);
     const color = left < 0 ? 'var(--coral)' : pct >= 80 ? 'var(--warn)' : 'var(--pm)';
-    h += `<div class="big ${left < 0 ? 'over' : ''}">${left < 0 ? `${money(-left)} over` : `${money(left)} left`}</div>
+    h += `<div class="big ${left < 0 ? 'over' : ''}">${left < 0 ? tr('{amt} over', { amt: money(-left) }) : tr('{amt} left', { amt: money(left) })}</div>
       <div class="progress"><div style="width:${pct}%;background:${color}"></div></div>
-      <div class="stats"><div><b>${money(everyday)}</b><span>Spent</span></div><div><b>${money(db.budget)}</b><span>Budget</span></div>
-        <div><b>${isCur ? daysLeft : 0}</b><span>${isCur ? `day${daysLeft === 1 ? '' : 's'} left` : 'Month over'}</span></div></div>`;
-    if (isCur && left > 0) h += `<div class="tip">${icon('wallet')}<span>You can spend about <b>${money(Math.floor(left / daysLeft))}</b> a day till ${daysInMonth} ${monthName.slice(0, 3)}.</span></div>`;
+      <div class="stats"><div><b>${money(everyday)}</b><span>${tr('Spent')}</span></div><div><b>${money(db.budget)}</b><span>${tr('Budget')}</span></div>
+        <div><b>${isCur ? daysLeft : 0}</b><span>${isCur ? (daysLeft === 1 ? tr('day left') : tr('days left')) : tr('Month over')}</span></div></div>`;
+    if (isCur && left > 0) h += `<div class="tip">${icon('wallet')}<span>${tr('You can spend about {amt} a day till {date}.', { amt: `<b>${money(Math.floor(left / daysLeft))}</b>`, date: shortDate(`${viewMonth}-${daysInMonth}`) })}</span></div>`;
     if (isCur && left <= 0) h += `<div class="tip" style="background:rgba(229,72,77,.1)">${icon('bell')}<span>${esc(line('overBudget', { over: money(-left) }))}</span></div>`;
-    if (evSpend > 0) h += `<div class="tip">${icon('event')}<span><b>${money(evSpend)}</b> on ${esc(evLabel)} is kept out of this budget.</span></div>`;
+    if (evSpend > 0) h += `<div class="tip">${icon('event')}<span>${tr('{amt} on {name} is kept out of this budget.', { amt: `<b>${money(evSpend)}</b>`, name: esc(evLabel) })}</span></div>`;
   } else {
     h += `<div class="big">${money(total)}</div>
-      <div class="sub">spent so far${isCur ? ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left in ${monthName}` : ''}</div>
-      ${evSpend > 0 ? `<div class="sub">${money(everyday)} everyday + ${money(evSpend)} ${esc(evLabel)}</div>` : ''}
-      <button class="btn ghost" data-budget style="width:100%;margin-top:12px">${icon('wallet')}Set a monthly budget</button>`;
+      <div class="sub">${tr('spent so far')}${isCur ? ' · ' + plural(daysLeft, '1 day left in {month}', '{n} days left in {month}', { month: monthName }) : ''}</div>
+      ${evSpend > 0 ? `<div class="sub">${tr('{a} everyday + {b} {name}', { a: money(everyday), b: money(evSpend), name: esc(evLabel) })}</div>` : ''}
+      <button class="btn ghost" data-budget style="width:100%;margin-top:12px">${icon('wallet')}${tr('Set a monthly budget')}</button>`;
   }
   h += '</div>';
 
   // 3. Udhaar reminders that are due today
   if (UDHAAR) db.loans.filter(isDue).slice(0, 2).forEach(l => {
+    const v = { amt: money(leftOf(l)), name: esc(l.person) };
     h += `<div class="banner" data-person="${esc(personKey(l.person))}" style="cursor:pointer">
       <div class="dir ${l.type}">${icon(l.type)}</div>
-      <div class="grow">${l.type === 'gave' ? `<b>Collect ${money(leftOf(l))} from ${esc(l.person)}</b>` : `<b>Pay ${esc(l.person)} ${money(leftOf(l))}</b>`}<div class="sub">Udhaar reminder</div></div>
-      ${l.type === 'gave' ? `<button class="btn wa" data-wa="${l.id}" style="flex:none;padding:9px 12px;font-size:14px">${icon('chat')}Remind</button>` : ''}
+      <div class="grow"><b>${l.type === 'gave' ? tr('Collect {amt} from {name}', v) : tr('Pay {name} {amt}', v)}</b><div class="sub">${tr('Udhaar reminder')}</div></div>
+      ${l.type === 'gave' ? `<button class="btn wa" data-wa="${l.id}" style="flex:none;padding:9px 12px;font-size:14px">${icon('chat')}${tr('Remind')}</button>` : ''}
     </div>`;
   });
 
   if (!db.expenses.length) {
-    $('#tab-home').innerHTML = h + `<div class="card empty">${emptyIcon('plus')}<b>Tap + below to log your first spend.</b><br>Heading, amount, how you paid. Done in 3 seconds.</div>`;
+    $('#tab-home').innerHTML = h + `<div class="card empty">${emptyIcon('plus')}<b>${tr('Tap + below to log your first spend.')}</b><br>${tr('Heading, amount, how you paid. Done in 3 seconds.')}</div>`;
     return;
   }
   if (!items.length) {
@@ -1183,11 +1652,11 @@ function renderHome() {
   // 4. Where it went: top 4 categories
   const cats = CATS.map(([c, ic]) => ({ c, ic, s: sum(items.filter(e => e.category === c)) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   const max = cats[0].s;
-  h += `<div class="card"><div class="card-head"><span class="label">Where it went</span><button class="link-btn" data-go="history">History ${icon('right')}</button></div>` +
-    cats.slice(0, 4).map(x => `<div class="bar-row"><div class="ico">${icon(x.ic)}</div><span>${x.c}</span><div class="bar"><div style="width:${x.s / max * 100}%"></div></div><b>${money(x.s)}</b></div>`).join('') + '</div>';
+  h += `<div class="card"><div class="card-head"><span class="label">${tr('Where it went')}</span><button class="link-btn" data-go="history">${tr('History')} ${icon('right')}</button></div>` +
+    cats.slice(0, 4).map(x => `<div class="bar-row"><div class="ico">${icon(x.ic)}</div><span>${tr(x.c)}</span><div class="bar"><div style="width:${x.s / max * 100}%"></div></div><b>${money(x.s)}</b></div>`).join('') + '</div>';
 
   // 5. Recent
-  h += `<div class="card"><div class="card-head"><span class="label">Recent</span><button class="link-btn" data-go="history">See all ${icon('right')}</button></div>
+  h += `<div class="card"><div class="card-head"><span class="label">${tr('Recent')}</span><button class="link-btn" data-go="history">${tr('See all')} ${icon('right')}</button></div>
     ${items.slice(0, 4).map(e => itemHTML(e, true)).join('')}</div>`;
   $('#tab-home').innerHTML = h;
 }
@@ -1200,19 +1669,19 @@ function renderHistory() {
   // payment-mode filters double as the Cash / Card / UPI split for the month
   $('#histModes').innerHTML = ['All', ...MODES.map(m => m.id)].map(m => {
     const s = sum(m === 'All' ? month : month.filter(e => e.mode === m));
-    return `<button class="chip ${histMode === m ? 'on' : ''}" data-hmode="${m}">${m === 'All' ? 'All' : modeIcon(m) + m} <small>${money(s)}</small></button>`;
+    return `<button class="chip ${histMode === m ? 'on' : ''}" data-hmode="${m}">${m === 'All' ? tr('All') : modeIcon(m) + tr(m)} <small>${money(s)}</small></button>`;
   }).join('');
   $('#histEvents').innerHTML = [...db.events].sort((a, b) => b.start.localeCompare(a.start))
     .map(v => `<button class="chip ${histEvent === v.id ? 'on' : ''}" data-hevent="${v.id}">${icon('event')}${esc(v.name)}${histEvent === v.id ? icon('x') : ''}</button>`).join('') +
-    `<button class="chip add" data-evnew>${icon('plus')}Trip or event</button>`;
+    `<button class="chip add" data-evnew>${icon('plus')}${tr('Trip or event')}</button>`;
   const q = $('#search').value.trim().toLowerCase();
   const items = month.filter(e =>
     (histMode === 'All' || e.mode === histMode) &&
-    (!q || `${e.title} ${e.note} ${e.category}`.toLowerCase().includes(q)));
+    (!q || `${e.title} ${e.note} ${e.category} ${tr(e.category)}`.toLowerCase().includes(q)));
   const head = ev ? eventCard(ev, true) : '';
   if (!items.length) {
     $('#histList').innerHTML = head + `<div class="card empty">${emptyIcon(ev ? 'event' : 'search')}${ev && !month.length
-      ? `<b>Nothing in ${esc(ev.name)} yet.</b><br>Spends you add for ${evDates(ev)} join it on their own.` : `Nothing found${ev ? '' : ` for ${monthLabel(viewMonth)}`}.`}</div>`;
+      ? `<b>${tr('Nothing in {name} yet.', { name: esc(ev.name) })}</b><br>${tr('Spends you add for {dates} join it on their own.', { dates: evDates(ev) })}` : ev ? tr('Nothing found.') : tr('Nothing found for {month}.', { month: monthLabel(viewMonth) })}</div>`;
     return;
   }
   const groups = [];
@@ -1221,7 +1690,7 @@ function renderHistory() {
     if (g && g.date === e.date) g.items.push(e); else groups.push({ date: e.date, items: [e] });
   });
   $('#histList').innerHTML = head +
-    (!ev || items.length < month.length ? `<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="label">${items.length} shown</span><b>${money(sum(items))}</b></div>` : '') +
+    (!ev || items.length < month.length ? `<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span class="label">${tr('{n} shown', { n: items.length })}</span><b>${money(sum(items))}</b></div>` : '') +
     groups.map(g => `<div class="day-head"><span>${dayLabel(g.date)}</span><span>${money(sum(g.items))}</span></div>
       <div class="card" style="padding:4px 16px">${g.items.map(e => itemHTML(e, false, !!ev)).join('')}</div>`).join('');
 }
@@ -1229,16 +1698,16 @@ function renderHistory() {
 // ---------- udhaar tab ----------
 function loanRow(l) {
   const left = leftOf(l), p = paid(l);
-  const verb = l.type === 'gave' ? 'You gave' : 'You took';
+  const verb = tr(l.type === 'gave' ? 'You gave {amt}' : 'You took {amt}', { amt: money(l.amount) });
   let status;
-  if (l.writtenOff) status = `Written off ${money(left)}`;
-  else if (!isOpen(l)) status = 'Settled';
-  else status = p ? `${money(p)} back · <b>${money(left)} left</b>` : `<b>${money(left)} pending</b>`;
-  const rem = isOpen(l) && l.remindOn ? `<span class="pill ${isDue(l) ? 'due' : ''}">${icon('bell')}${isDue(l) ? 'Due' : shortDate(l.remindOn)}</span>` : '';
+  if (l.writtenOff) status = tr('Written off {amt}', { amt: money(left) });
+  else if (!isOpen(l)) status = tr('Settled');
+  else status = p ? tr('{paid} back · {left} left', { paid: money(p), left: `<b>${money(left)}</b>` }) : `<b>${tr('{amt} pending', { amt: money(left) })}</b>`;
+  const rem = isOpen(l) && l.remindOn ? `<span class="pill ${isDue(l) ? 'due' : ''}">${icon('bell')}${isDue(l) ? tr('Due') : shortDate(l.remindOn)}</span>` : '';
   return `<div class="loan" data-loan="${l.id}">
     <div class="dir ${l.type}">${icon(l.type)}</div>
-    <div class="mid"><div style="font-weight:600">${verb} ${money(l.amount)}${rem}</div>
-    <div class="sub">${shortDate(l.date)} · ${modeIcon(l.mode)} ${l.mode}${l.note ? ' · ' + esc(l.note) : ''}</div></div>
+    <div class="mid"><div style="font-weight:600">${verb}${rem}</div>
+    <div class="sub">${shortDate(l.date)} · ${modeIcon(l.mode)} ${tr(l.mode)}${l.note ? ' · ' + esc(noteText(l.note)) : ''}</div></div>
     <div class="sub" style="text-align:right">${status}</div></div>`;
 }
 function renderUdhaar() {
@@ -1254,10 +1723,10 @@ function renderUdhaar() {
   const list = people();
   const get = round2(list.reduce((s, p) => s + p.get, 0)), owe = round2(list.reduce((s, p) => s + p.owe, 0));
   let h = `<div class="tiles">
-    <div class="card"><div class="label">You'll get back</div><div class="tile-amt get">${money(get)}</div></div>
-    <div class="card"><div class="label">You owe</div><div class="tile-amt owe">${money(owe)}</div></div></div>`;
+    <div class="card"><div class="label">${tr("You'll get back")}</div><div class="tile-amt get">${money(get)}</div></div>
+    <div class="card"><div class="label">${tr('You owe')}</div><div class="tile-amt owe">${money(owe)}</div></div></div>`;
   if (!db.loans.length) {
-    $('#tab-udhaar').innerHTML = h + `<div class="card empty">${emptyIcon('udhaar')}<b>${esc(line('udhaarEmpty'))}</b><br>Lent or borrowed money? Tap <b>+</b> to note it.</div>`;
+    $('#tab-udhaar').innerHTML = h + `<div class="card empty">${emptyIcon('udhaar')}<b>${esc(line('udhaarEmpty'))}</b><br>${tr('Lent or borrowed money? Tap <b>+</b> to note it.')}</div>`;
     return;
   }
   const open = list.filter(p => p.open.length).sort((a, b) => (b.due - a.due) || (Math.max(b.get, b.owe) - Math.max(a.get, a.owe)));
@@ -1268,21 +1737,21 @@ function renderUdhaar() {
     h += `<div class="card person">
       <div class="person-head" data-person="${esc(p.key)}">
         <div class="avatar">${esc(p.name[0].toUpperCase())}</div>
-        <div class="mid"><div style="font-weight:700">${esc(p.name)}${p.due ? '<span class="pill due">Due</span>' : ''}</div>
-          <div class="sub">${p.open.length} open</div></div>
-        <div class="net ${net >= 0 ? 'get' : 'owe'}">${money(Math.abs(net))}<small>${net >= 0 ? 'you get' : 'you owe'}</small></div>
+        <div class="mid"><div style="font-weight:700">${esc(p.name)}${p.due ? `<span class="pill due">${tr('Due')}</span>` : ''}</div>
+          <div class="sub">${tr('{n} open', { n: p.open.length })}</div></div>
+        <div class="net ${net >= 0 ? 'get' : 'owe'}">${money(Math.abs(net))}<small>${net >= 0 ? tr('you get') : tr('you owe')}</small></div>
       </div>
       ${expanded ? `<div class="person-body">
         <div class="sub" style="display:flex;align-items:center;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)">${icon('chat', 'mode-ic')}
-          ${contactOf(p.name) ? `WhatsApp: <b style="color:var(--ink)">${esc(contactOf(p.name).name)}</b> <button class="link-btn" data-link="${esc(p.name)}" style="margin-left:auto">Change</button>`
-            : `No WhatsApp contact linked <button class="link-btn" data-link="${esc(p.name)}" style="margin-left:auto">Link contact</button>`}</div>
+          ${contactOf(p.name) ? `WhatsApp: <b style="color:var(--ink)">${esc(contactOf(p.name).name)}</b> <button class="link-btn" data-link="${esc(p.name)}" style="margin-left:auto">${tr('Change')}</button>`
+            : `${tr('No WhatsApp contact linked')} <button class="link-btn" data-link="${esc(p.name)}" style="margin-left:auto">${tr('Link contact')}</button>`}</div>
         ${p.open.sort(byNewest).map(loanRow).join('')}
-        <button class="link-btn" data-addfor="${esc(p.name)}">${icon('plus')}Add for ${esc(p.name)}</button></div>` : ''}
+        <button class="link-btn" data-addfor="${esc(p.name)}">${icon('plus')}${tr('Add for {name}', { name: esc(p.name) })}</button></div>` : ''}
     </div>`;
   });
   const closed = db.loans.filter(l => !isOpen(l)).sort(byNewest);
   if (closed.length) {
-    h += `<details class="settled"><summary>Settled (${closed.length}) ▾</summary>
+    h += `<details class="settled"><summary>${tr('Settled')} (${closed.length}) ▾</summary>
       <div class="card" style="padding:4px 16px">${closed.map(l => `<div style="font-size:13px;color:var(--muted);padding-top:8px">${esc(l.person)}</div>` + loanRow(l)).join('')}</div></details>`;
   }
   $('#tab-udhaar').innerHTML = h;
@@ -1293,7 +1762,7 @@ function render() {
   $('#monthBar').hidden = tab === 'udhaar' || (tab === 'history' && !!histEvent);
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
   document.querySelectorAll('.nav-btn[data-go]').forEach(b => b.classList.toggle('active', b.dataset.go === tab));
-  $('#btnAdd').setAttribute('aria-label', UDHAAR && tab === 'udhaar' ? 'Add udhaar' : 'Add expense');
+  $('#btnAdd').setAttribute('aria-label', UDHAAR && tab === 'udhaar' ? tr('Add udhaar') : tr('Add expense'));
   if (tab === 'home') renderHome(); else if (tab === 'history') renderHistory(); else renderUdhaar();
 }
 
@@ -1314,7 +1783,7 @@ window.addEventListener('popstate', hideSheets);
 function segHTML(name, options, value) {
   return options.map(([val, label]) => `<button class="${value === val ? 'on' : ''}" data-seg="${name}" data-val="${val}">${label}</button>`).join('');
 }
-const modeOptions = MODES.map(m => [m.id, `${icon(m.ic)}${m.id}`]);
+const modeOptions = () => MODES.map(m => [m.id, `${icon(m.ic)}${tr(m.id)}`]);
 
 // ---------- expense pop-up + form ----------
 let menuId = null;
@@ -1323,8 +1792,8 @@ function openMenu(e) {
   $('#menuIco').innerHTML = catIcon(e.category);
   $('#menuTitle').textContent = e.title;
   $('#menuAmt').textContent = money(e.amount);
-  $('#menuMeta').innerHTML = [dayLabel(e.date), `${modeIcon(e.mode)} ${e.mode}`, e.category, e.event && evName(e.event) ? `${icon('event', 'mode-ic')} ${esc(evName(e.event))}` : ''].filter(Boolean).join(' · ');
-  $('#menuNote').textContent = e.note || '';
+  $('#menuMeta').innerHTML = [dayLabel(e.date), `${modeIcon(e.mode)} ${tr(e.mode)}`, tr(e.category), e.event && evName(e.event) ? `${icon('event', 'mode-ic')} ${esc(evName(e.event))}` : ''].filter(Boolean).join(' · ');
+  $('#menuNote').textContent = noteText(e.note || '');
   $('#menuNote').hidden = !e.note;
   openSheet($('#itemMenu'));
 }
@@ -1333,7 +1802,7 @@ function deleteFromMenu() {
   if (i < 0) return;
   const [removed] = db.expenses.splice(i, 1);
   save(); closeSheets(); render();
-  toast('Gone. Changed your mind?', { label: 'Undo', fn: () => { db.expenses.push(removed); save(); render(); toast('Restored'); } });
+  toast(tr('Gone. Changed your mind?'), { label: tr('Undo'), fn: () => { db.expenses.push(removed); save(); render(); toast(tr('Restored')); } });
 }
 
 // preset: optional { title, category, amount, mode, date, pendingId } (e.g. a spend found in SMS)
@@ -1345,7 +1814,7 @@ function openForm(e, swap, preset) {
   $('#fTitle').value = e ? e.title : pr.title || '';
   $('#fDate').value = e ? e.date : pr.date || today();
   $('#fNote').value = e ? e.note : '';
-  $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
+  $('#sheetTitle').textContent = e ? tr('Edit expense') : tr('Add expense');
   $('#btnDelete').style.display = e ? '' : 'none';
   $('#fAmount').value = form.expr;
   form.split = 2; form.names = []; $('#fSplit').checked = false; $('#splitName').value = ''; // heading starts blank: no suggestions (Shyamal's call)
@@ -1356,8 +1825,8 @@ function openForm(e, swap, preset) {
   if (swap) swapSheet($('#sheet')); else openSheet($('#sheet'));
 }
 function renderPickers() {
-  $('#fMode').innerHTML = segHTML('fMode', modeOptions, form.mode);
-  $('#fCat').innerHTML = CATS.map(([c, ic]) => `<button class="chip ${form.category === c ? 'on' : ''}" data-cat="${c}">${icon(ic)}${c}</button>`).join('');
+  $('#fMode').innerHTML = segHTML('fMode', modeOptions(),form.mode);
+  $('#fCat').innerHTML = CATS.map(([c, ic]) => `<button class="chip ${form.category === c ? 'on' : ''}" data-cat="${c}">${icon(ic)}${tr(c)}</button>`).join('');
   // events near this date (a month either side), the tagged one first
   const d = $('#fDate').value || today();
   const evs = db.events.filter(v => v.id === form.event || (dayDiff(v.end, d) <= 30 && dayDiff(d, v.start) <= 30))
@@ -1377,11 +1846,12 @@ function renderSplit() {
   $('#splitShare').textContent = share;
   const q = personKey($('#splitName').value);
   const known = UDHAAR ? people().filter(p => !db.hiddenNames.includes(p.key) && !form.names.some(n => personKey(n) === p.key) && (!q || p.key.includes(q))).slice(0, 5) : [];
-  $('#splitNames').innerHTML = form.names.map((n, i) => `<span class="chip on pchip"><span class="pn">${esc(n)}</span><button class="chip-x" data-snx="${i}" aria-label="Remove ${esc(n)}">${icon('x')}</button></span>`).join('') +
+  $('#splitNames').innerHTML = form.names.map((n, i) => `<span class="chip on pchip"><span class="pn">${esc(n)}</span><button class="chip-x" data-snx="${i}" aria-label="${tr('Remove {name}', { name: esc(n) })}">${icon('x')}</button></span>`).join('') +
     known.map(p => `<button class="chip" data-snadd="${esc(p.name)}">${icon('plus')}${esc(p.name)}</button>`).join('');
   $('#splitNames').hidden = !form.names.length && !known.length;
   $('#splitOwe').hidden = !form.names.length;
-  $('#splitOwe').innerHTML = form.names.length ? `${icon('users', 'mode-ic')} ${esc(listNames(form.names))} will ${form.names.length === 1 ? 'owe' : 'each owe'} you <b>${share}</b>. Goes to Udhaar with a reminder.` : '';
+  const ow = { who: esc(listNames(form.names)), amt: `<b>${share}</b>` };
+  $('#splitOwe').innerHTML = form.names.length ? `${icon('users', 'mode-ic')} ${form.names.length === 1 ? tr('{who} will owe you {amt}. Goes to Udhaar with a reminder.', ow) : tr('{who} will each owe you {amt}. Goes to Udhaar with a reminder.', ow)}` : '';
 }
 function addSplitName(raw) {
   const n = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 40);
@@ -1407,8 +1877,8 @@ function updateAmount() {
 function saveForm() {
   const title = $('#fTitle').value.trim();
   const total = round2(calc(form.expr));
-  if (!title) { toast('Add a heading'); $('#fTitle').focus(); return; }
-  if (!isFinite(total) || total <= 0) { toast('Enter an amount'); $('#fAmount').focus(); return; }
+  if (!title) { toast(tr('Add a heading')); $('#fTitle').focus(); return; }
+  if (!isFinite(total) || total <= 0) { toast(tr('Enter an amount')); $('#fAmount').focus(); return; }
   const split = $('#fSplit').checked ? form.split : 1;
   if (split > 1 && $('#splitName').value.trim()) addSplitName($('#splitName').value); // typed but not added yet
   const names = split > 1 ? form.names : [];
@@ -1444,24 +1914,25 @@ function saveForm() {
   render();
   const todayTotal = sum(db.expenses.filter(e => e.date === today()));
   const ev = rec.event && evById(rec.event);
-  toast(old ? 'Updated' : first ? line('firstSave') : ev ? `Saved ${money(amount)} to ${ev.name}. ${money(sum(evItems(ev.id)))} so far.` : `Saved ${money(amount)}. Today: ${money(todayTotal)}.`);
+  toast(old ? tr('Updated') : first ? line('firstSave') : ev ? tr('Saved {amt} to {name}. {total} so far.', { amt: money(amount), name: ev.name, total: money(sum(evItems(ev.id))) }) : tr('Saved {amt}. Today: {today}.', { amt: money(amount), today: money(todayTotal) }));
   if (names.length) { syncNotifications(); setTimeout(() => splitDone(rec, total, split, names), 350); }
 }
 // After a split with named friends: offer the whole split as one WhatsApp message (pick the group there)
 function splitDone(rec, total, split, names) {
   const share = money(rec.amount);
-  const msg = `${rec.title}: ${money(total)} split ${split} ways, ${share} each.\n` +
-    names.map(n => `${n}: ${share}`).join('\n') + '\nPlease send yours when you can 🙂';
+  const msg = tr('{title}: {total} split {n} ways, {share} each.', { title: rec.title, total: money(total), n: split, share }) + '\n' +
+    names.map(n => `${n}: ${share}`).join('\n') + '\n' + tr('Please send yours when you can 🙂');
+  const v = { who: `<b>${esc(listNames(names))}</b>`, amt: `<b>${share}</b>`, date: shortDate(addDays(7)) };
   dialog({
-    title: 'Split saved',
-    body: `<p><b>${esc(listNames(names))}</b> ${names.length === 1 ? 'owes' : 'each owe'} you <b>${share}</b>. It's in Udhaar, with a reminder on ${shortDate(addDays(7))}.</p><p>Send the split to your group on WhatsApp?</p>`,
-    actions: [{ label: 'Later', kind: 'ghost' }, { label: `${icon('chat')}Send to group`, kind: 'wa', fn: () => openExternal('https://wa.me/?text=' + encodeURIComponent(msg)) }],
+    title: tr('Split saved'),
+    body: `<p>${names.length === 1 ? tr("{who} owes you {amt}. It's in Udhaar, with a reminder on {date}.", v) : tr("{who} each owe you {amt}. It's in Udhaar, with a reminder on {date}.", v)}</p><p>${tr('Send the split to your group on WhatsApp?')}</p>`,
+    actions: [{ label: tr('Later'), kind: 'ghost' }, { label: `${icon('chat')}${tr('Send to group')}`, kind: 'wa', fn: () => openExternal('https://wa.me/?text=' + encodeURIComponent(msg)) }],
   });
 }
 async function deleteCurrent() {
-  if (!form.id || !(await ask('Delete this expense?', 'Delete'))) return;
+  if (!form.id || !(await ask(tr('Delete this expense?'), tr('Delete')))) return;
   db.expenses = db.expenses.filter(x => x.id !== form.id);
-  save(); closeSheets(); render(); toast('Deleted');
+  save(); closeSheets(); render(); toast(tr('Deleted'));
 }
 
 // ---------- udhaar form, pop-up, repayment ----------
@@ -1470,7 +1941,7 @@ const REMIND = [['', 'No reminder'], ['7', 'In 1 week'], ['14', 'In 2 weeks'], [
 function openLoanForm(l, swap, presetPerson) {
   lf = l ? { id: l.id, type: l.type, mode: l.mode, remind: l.remindOn ? 'pick' : '' }
          : { id: null, type: 'gave', mode: db.lastMode || 'UPI', remind: '7' };
-  $('#loanTitle').textContent = l ? 'Edit udhaar' : 'Add udhaar';
+  $('#loanTitle').textContent = l ? tr('Edit udhaar') : tr('Add udhaar');
   $('#lPerson').value = l ? l.person : presetPerson || '';
   $('#lAmount').value = l ? l.amount : '';
   $('#lDate').value = l ? l.date : today();
@@ -1480,26 +1951,26 @@ function openLoanForm(l, swap, presetPerson) {
   if (swap) swapSheet($('#loanSheet')); else openSheet($('#loanSheet'));
 }
 function renderLoanForm() {
-  $('#lType').innerHTML = segHTML('lType', [['gave', icon('gave') + 'I gave'], ['took', icon('took') + 'I took']], lf.type);
-  $('#lMode').innerHTML = segHTML('lMode', modeOptions, lf.mode);
-  $('#lRemind').innerHTML = REMIND.map(([v, t]) => `<button class="chip ${lf.remind === v ? 'on' : ''}" data-remind="${v}">${t}</button>`).join('');
+  $('#lType').innerHTML = segHTML('lType', [['gave', icon('gave') + tr('I gave')], ['took', icon('took') + tr('I took')]], lf.type);
+  $('#lMode').innerHTML = segHTML('lMode', modeOptions(), lf.mode);
+  $('#lRemind').innerHTML = REMIND.map(([v, t]) => `<button class="chip ${lf.remind === v ? 'on' : ''}" data-remind="${v}">${tr(t)}</button>`).join('');
   $('#lRemindDate').hidden = lf.remind !== 'pick';
   const q = personKey($('#lPerson').value);
   const names = people().filter(p => !db.hiddenNames.includes(p.key) && (!q || (p.key.includes(q) && p.key !== q))).slice(0, 8);
-  $('#lPeople').innerHTML = names.map(p => `<span class="chip pchip"><button data-pname="${esc(p.name)}">${esc(p.name)}</button><button class="chip-x" data-pdel="${esc(p.key)}" aria-label="Remove ${esc(p.name)} from suggestions">${icon('x')}</button></span>`).join('');
+  $('#lPeople').innerHTML = names.map(p => `<span class="chip pchip"><button data-pname="${esc(p.name)}">${esc(p.name)}</button><button class="chip-x" data-pdel="${esc(p.key)}" aria-label="${tr('Remove {name} from suggestions', { name: esc(p.name) })}">${icon('x')}</button></span>`).join('');
   $('#lPeople').style.display = names.length ? '' : 'none';
 }
 // ✕ on a friend-name suggestion: hide it from suggestions (their udhaar entries stay)
 function hideSuggestion(key) {
   if (!db.hiddenNames.includes(key)) db.hiddenNames.push(key);
   save(); renderLoanForm();
-  toast('Removed from suggestions', { label: 'Undo', fn: () => { db.hiddenNames = db.hiddenNames.filter(k => k !== key); save(); renderLoanForm(); } });
+  toast(tr('Removed from suggestions'), { label: tr('Undo'), fn: () => { db.hiddenNames = db.hiddenNames.filter(k => k !== key); save(); renderLoanForm(); } });
 }
 function saveLoan() {
   const person = $('#lPerson').value.trim();
   const amount = round2(calc(cleanAmount($('#lAmount').value)));
-  if (!person) { toast("Add your friend's name"); $('#lPerson').focus(); return; }
-  if (!(amount > 0)) { toast('Enter an amount'); $('#lAmount').focus(); return; }
+  if (!person) { toast(tr("Add your friend's name")); $('#lPerson').focus(); return; }
+  if (!(amount > 0)) { toast(tr('Enter an amount')); $('#lAmount').focus(); return; }
   const remindOn = lf.remind === 'pick' ? $('#lRemindDate').value : lf.remind ? addDays(Number(lf.remind)) : '';
   const old = lf.id && db.loans.find(x => x.id === lf.id);
   const rec = {
@@ -1512,13 +1983,14 @@ function saveLoan() {
   save(); closeSheets();
   tab = 'udhaar'; openPerson = personKey(person); render();
   syncNotifications();
-  toast(old ? 'Updated' : rec.type === 'gave'
-    ? `Noted: ${person} has your ${money(amount)}.${remindOn ? ` Reminder on ${shortDate(remindOn)}.` : ''}`
-    : `Noted: you owe ${person} ${money(amount)}.`);
+  const v = { name: person, amt: money(amount), date: remindOn ? shortDate(remindOn) : '' };
+  toast(old ? tr('Updated') : rec.type === 'gave'
+    ? tr('Noted: {name} has your {amt}.', v) + (remindOn ? ' ' + tr('Reminder on {date}.', v) : '')
+    : tr('Noted: you owe {name} {amt}.', v));
   // New "I gave" with a reminder: link the exact contact so the nudge reaches the right person
   if (!old && rec.type === 'gave' && remindOn && !contactOf(person)) {
     setTimeout(async () => {
-      if (await ask(`Send the reminder to ${person} on WhatsApp? Pick ${person} from your contacts so it goes to the right person.`, 'Pick contact', 'primary')) linkContact(person);
+      if (await ask(tr('Send the reminder to {name} on WhatsApp? Pick {name} from your contacts so it goes to the right person.', v), tr('Pick contact'), 'primary')) linkContact(person);
     }, 400);
   }
 }
@@ -1528,17 +2000,18 @@ function openLoanMenu(l) {
   loanId = l.id;
   const left = leftOf(l);
   $('#lmAvatar').textContent = l.person.trim()[0].toUpperCase();
-  $('#lmTitle').textContent = l.type === 'gave' ? `You gave ${l.person} ${money(l.amount)}` : `You took ${money(l.amount)} from ${l.person}`;
-  $('#lmMeta').innerHTML = [shortDate(l.date), `${modeIcon(l.mode)} ${l.mode}`, esc(l.note)].filter(Boolean).join(' · ');
-  const hist = l.payments.map(p => `${shortDate(p.date)}: ${money(p.amount)} ${l.type === 'gave' ? 'back' : 'paid'}`);
-  const state = l.writtenOff ? `Written off: ${money(left)}` : isOpen(l) ? `${money(left)} ${l.type === 'gave' ? 'still to get' : 'still to pay'}` : 'Settled';
-  $('#lmHistory').innerHTML = [...hist.map(esc), `<b>${state}</b>`, isOpen(l) && l.remindOn ? `${icon('bell', 'mode-ic')} Reminder ${shortDate(l.remindOn)}` : ''].filter(Boolean).join('<br>');
+  const lv = { name: l.person, amt: money(l.amount) };
+  $('#lmTitle').textContent = l.type === 'gave' ? tr('You gave {name} {amt}', lv) : tr('You took {amt} from {name}', lv);
+  $('#lmMeta').innerHTML = [shortDate(l.date), `${modeIcon(l.mode)} ${tr(l.mode)}`, esc(noteText(l.note))].filter(Boolean).join(' · ');
+  const hist = l.payments.map(p => `${shortDate(p.date)}: ` + tr(l.type === 'gave' ? '{amt} back' : '{amt} paid', { amt: money(p.amount) }));
+  const state = l.writtenOff ? tr('Written off: {amt}', { amt: money(left) }) : isOpen(l) ? tr(l.type === 'gave' ? '{amt} still to get' : '{amt} still to pay', { amt: money(left) }) : tr('Settled');
+  $('#lmHistory').innerHTML = [...hist.map(esc), `<b>${state}</b>`, isOpen(l) && l.remindOn ? `${icon('bell', 'mode-ic')} ${tr('Reminder {date}', { date: shortDate(l.remindOn) })}` : ''].filter(Boolean).join('<br>');
   const b = [];
   if (isOpen(l)) {
-    b.push(`<button class="btn good" data-lact="pay">${icon('check')}${l.type === 'gave' ? 'Got money back' : 'I paid it back'}</button>`);
-    if (l.type === 'gave') b.push(`<button class="btn wa" data-lact="wa">${icon('chat')}Remind on WhatsApp</button>`);
-    b.push(`<div class="actions" style="margin:0"><button class="btn ghost" data-lact="edit">${icon('edit')}Edit</button>${l.type === 'gave' ? '<button class="btn ghost" data-lact="writeoff">Write off</button>' : ''}<button class="btn danger" data-lact="delete">${icon('trash')}</button></div>`);
-  } else b.push(`<button class="btn danger" data-lact="delete">Delete</button>`);
+    b.push(`<button class="btn good" data-lact="pay">${icon('check')}${l.type === 'gave' ? tr('Got money back') : tr('I paid it back')}</button>`);
+    if (l.type === 'gave') b.push(`<button class="btn wa" data-lact="wa">${icon('chat')}${tr('Remind on WhatsApp')}</button>`);
+    b.push(`<div class="actions" style="margin:0"><button class="btn ghost" data-lact="edit">${icon('edit')}${tr('Edit')}</button>${l.type === 'gave' ? `<button class="btn ghost" data-lact="writeoff">${tr('Write off')}</button>` : ''}<button class="btn danger" data-lact="delete">${icon('trash')}</button></div>`);
+  } else b.push(`<button class="btn danger" data-lact="delete">${tr('Delete')}</button>`);
   $('#lmActions').innerHTML = b.join('');
   openSheet($('#loanMenu'));
 }
@@ -1546,21 +2019,21 @@ let payMode = 'UPI';
 function openPay(l) {
   const left = leftOf(l);
   payMode = l.mode;
-  $('#payTitle').textContent = l.type === 'gave' ? `Money back from ${l.person}` : `You paid ${l.person}`;
-  $('#payLeft').textContent = `${money(left)} ${l.type === 'gave' ? 'still to get' : 'still to pay'}`;
+  $('#payTitle').textContent = tr(l.type === 'gave' ? 'Money back from {name}' : 'You paid {name}', { name: l.person });
+  $('#payLeft').textContent = tr(l.type === 'gave' ? '{amt} still to get' : '{amt} still to pay', { amt: money(left) });
   $('#payAmount').value = left;
-  $('#payFull').textContent = `Full ${money(left)}`;
-  $('#pMode').innerHTML = segHTML('pMode', modeOptions, payMode);
+  $('#payFull').textContent = tr('Full {amt}', { amt: money(left) });
+  $('#pMode').innerHTML = segHTML('pMode', modeOptions(), payMode);
   swapSheet($('#payDlg'));
 }
 function savePay() {
   const l = db.loans.find(x => x.id === loanId);
   if (!l) return;
   const amt = Math.min(round2(calc(cleanAmount($('#payAmount').value))), leftOf(l));
-  if (!(amt > 0)) { toast('Enter an amount'); return; }
+  if (!(amt > 0)) { toast(tr('Enter an amount')); return; }
   l.payments.push({ id: uid(), amount: amt, date: today(), mode: payMode });
   save(); closeSheets(); render(); syncNotifications();
-  toast(isOpen(l) ? `${money(amt)} ${l.type === 'gave' ? 'back' : 'paid'}. ${money(leftOf(l))} left.` : `All settled with ${l.person}. 🎉`);
+  toast(isOpen(l) ? tr(l.type === 'gave' ? '{amt} back. {left} left.' : '{amt} paid. {left} left.', { amt: money(amt), left: money(leftOf(l)) }) : tr('All settled with {name}. 🎉', { name: l.person }));
 }
 async function loanAction(act) {
   const l = db.loans.find(x => x.id === loanId);
@@ -1569,16 +2042,16 @@ async function loanAction(act) {
   else if (act === 'wa') { closeSheets(); openExternal(waLink(l)); }
   else if (act === 'edit') openLoanForm(l, true);
   else if (act === 'writeoff') {
-    if (!(await ask(`Write off ${money(leftOf(l))} from ${l.person}? It will be added to your expenses.`, 'Write off'))) return;
-    db.expenses.push({ id: uid(), title: `Udhaar written off: ${l.person.trim()}`, amount: leftOf(l), mode: l.mode, category: 'Other', date: today(), note: l.note, createdAt: Date.now() });
+    if (!(await ask(tr('Write off {amt} from {name}? It will be added to your expenses.', { amt: money(leftOf(l)), name: l.person }), tr('Write off')))) return;
+    db.expenses.push({ id: uid(), title: tr('Udhaar written off: {name}', { name: l.person.trim() }), amount: leftOf(l), mode: l.mode, category: 'Other', date: today(), note: l.note, createdAt: Date.now() });
     l.writtenOff = true;
     save(); closeSheets(); render(); syncNotifications();
-    toast('Written off and added to expenses. Lesson learnt? 😅');
+    toast(tr('Written off and added to expenses. Lesson learnt? 😅'));
   } else if (act === 'delete') {
-    if (!(await ask(`Delete this udhaar with ${l.person}?`, 'Delete'))) return;
+    if (!(await ask(tr('Delete this udhaar with {name}?', { name: l.person }), tr('Delete')))) return;
     db.loans = db.loans.filter(x => x.id !== l.id);
     save(); closeSheets(); render(); syncNotifications();
-    toast('Deleted');
+    toast(tr('Deleted'));
   }
 }
 
@@ -1606,13 +2079,13 @@ async function syncNotifications() {
       const day = new Date(l.remindOn + 'T10:00:00');
       if (pre > new Date()) list.push({
         id: nid(l.id + 'pre'), schedule: { at: pre, allowWhileIdle: true }, ...look, actionTypeId: 'UDHAAR_PRE', extra: { ...extra, kind: 'pre' },
-        title: gave ? `Tomorrow: reminding ${l.person} about ${amt}` : `Tomorrow: you owe ${l.person} ${amt}`,
-        body: gave ? `At 10 AM we'll get the WhatsApp message ready for you.` : `Settle it tomorrow and stay friends 🙂`,
+        title: tr(gave ? 'Tomorrow: reminding {name} about {amt}' : 'Tomorrow: you owe {name} {amt}', { name: l.person, amt }),
+        body: tr(gave ? "At 10 AM we'll get the WhatsApp message ready for you." : 'Settle it tomorrow and stay friends 🙂'),
       });
       if (day > new Date()) list.push({
         id: nid(l.id), schedule: { at: day, allowWhileIdle: true }, ...look, actionTypeId: gave ? 'UDHAAR_SEND' : 'UDHAAR_OWE', extra: { ...extra, kind: 'day' },
-        title: gave ? `Send ${l.person} the reminder?` : `You owe ${l.person} ${amt} today`,
-        body: gave ? `Tap to open WhatsApp with the message ready: ${amt} from ${shortDate(l.date)}.` : `Due today. Clear it and stay friends 🙂`,
+        title: tr(gave ? 'Send {name} the reminder?' : 'You owe {name} {amt} today', { name: l.person, amt }),
+        body: gave ? tr('Tap to open WhatsApp with the message ready: {amt} from {date}.', { amt, date: shortDate(l.date) }) : tr('Due today. Clear it and stay friends 🙂'),
       });
     });
     if (list.length && await notifAllowed()) await ln.schedule({ notifications: list });
@@ -1620,14 +2093,19 @@ async function syncNotifications() {
 }
 
 // Buttons on udhaar notifications, and what tapping them does
+async function registerNotifButtons() { // again after a language change
+  const ln = LN(); if (!ln) return;
+  const send = { id: 'send', title: tr('Send on WhatsApp') }, snooze = { id: 'snooze', title: tr('Snooze 1 day') }, paid = { id: 'paid', title: tr('Already paid') };
+  await ln.registerActionTypes({ types: [
+    { id: 'UDHAAR_SEND', actions: [send, snooze, paid] },
+    { id: 'UDHAAR_PRE', actions: [snooze, paid] },
+    { id: 'UDHAAR_OWE', actions: [{ id: 'paid', title: tr('I paid it') }, snooze] },
+  ] });
+}
 async function setupNotificationActions() {
   const ln = LN(); if (!ln) return;
   try {
-    await ln.registerActionTypes({ types: [
-      { id: 'UDHAAR_SEND', actions: [{ id: 'send', title: 'Send on WhatsApp' }, { id: 'snooze', title: 'Snooze 1 day' }, { id: 'paid', title: 'Already paid' }] },
-      { id: 'UDHAAR_PRE', actions: [{ id: 'snooze', title: 'Snooze 1 day' }, { id: 'paid', title: 'Already paid' }] },
-      { id: 'UDHAAR_OWE', actions: [{ id: 'paid', title: 'I paid it' }, { id: 'snooze', title: 'Snooze 1 day' }] },
-    ] });
+    await registerNotifButtons();
     await ln.addListener('localNotificationActionPerformed', a => onNotificationAction(a.actionId, (a.notification && a.notification.extra) || {}));
   } catch (e) {}
 }
@@ -1637,7 +2115,7 @@ function onNotificationAction(act, extra) {
   if (act === 'send' || (act === 'tap' && extra.kind === 'day' && l.type === 'gave')) { openExternal(waLink(l)); return; }
   if (act === 'snooze') {
     l.remindOn = addDays(1); save(); syncNotifications(); render();
-    toast(`Snoozed: reminder on ${shortDate(l.remindOn)}`);
+    toast(tr('Snoozed: reminder on {date}', { date: shortDate(l.remindOn) }));
     return;
   }
   tab = 'udhaar'; openPerson = personKey(l.person); render();
@@ -1663,42 +2141,42 @@ async function checkApk() {
 }
 function showGate(v) {
   if (!$('#gate').hidden) return;
-  $('#gateTitle').textContent = `Update available: v${v.versionName}`;
-  $('#gateNotes').textContent = `${v.notes || ''} Your data stays safe.`.trim();
+  $('#gateTitle').textContent = tr('Update available: v{v}', { v: v.versionName });
+  $('#gateNotes').textContent = `${v.notes || ''} ${tr('Your data stays safe.')}`.trim();
   $('#gateProgress').hidden = true;
   $('#gateBtns').hidden = false;
   $('#gateSkip').hidden = true;
-  $('#gateGo').textContent = 'Update';
+  $('#gateGo').textContent = tr('Update');
   $('#gate').hidden = false;
   $('#gateCancel').onclick = () => {
     if (native) Capacitor.Plugins.App.exitApp();
-    else { $('#gate').hidden = true; toast('On the phone, the app closes here'); }
+    else { $('#gate').hidden = true; toast(tr('On the phone, the app closes here')); }
   };
   $('#gateGo').onclick = () => installApk(v);
   // Never lock anyone out: once an update attempt fails or is abandoned, the current version stays usable.
-  $('#gateSkip').onclick = () => { $('#gate').hidden = true; toast("Using the current version. We'll ask again next time."); };
+  $('#gateSkip').onclick = () => { $('#gate').hidden = true; toast(tr("Using the current version. We'll ask again next time.")); };
 }
 function gateRetry(msg) {
   if (msg) $('#gatePct').textContent = msg;
   $('#gateBtns').hidden = false;
-  $('#gateGo').textContent = 'Try again';
+  $('#gateGo').textContent = tr('Try again');
   $('#gateSkip').hidden = false;
 }
 function gateProgress(pct, text) {
   $('#gateBtns').hidden = true;
   $('#gateProgress').hidden = false;
   $('#gateBar').style.width = pct + '%';
-  $('#gatePct').textContent = text || `Downloading update… ${pct}%`;
+  $('#gatePct').textContent = text || tr('Downloading update… {pct}%', { pct });
 }
 async function installApk(v) {
   if (!native) { // laptop preview: pretend to download
-    let p = 0; const t = setInterval(() => { p += 10; gateProgress(p); if (p >= 100) { clearInterval(t); gateProgress(100, 'Android asks "Install?" here. Tap Install.'); } }, 150);
+    let p = 0; const t = setInterval(() => { p += 10; gateProgress(p); if (p >= 100) { clearInterval(t); gateProgress(100, tr('Android asks "Install?" here. Tap Install.')); } }, 150);
     return;
   }
   const P = Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('ApkUpdater') ? Capacitor.Plugins.ApkUpdater : null;
   if (!P) { // APK 2.1 and older: no in-app installer yet, use the browser
     openExternal(v.url);
-    setTimeout(() => { gateProgress(100, 'Finish the install from your downloads.'); gateRetry(); }, 1500);
+    setTimeout(() => { gateProgress(100, tr('Finish the install from your downloads.')); gateRetry(); }, 1500);
     return;
   }
   gateProgress(0);
@@ -1706,10 +2184,10 @@ async function installApk(v) {
   try {
     sub = await P.addListener('progress', e => gateProgress(e.percent));
     await P.install({ url: v.url });
-    gateProgress(100, 'Tap Install on the next screen.');
-    setTimeout(() => gateRetry('Didn\'t install? Try again, or keep using this version for now.'), 4000);
+    gateProgress(100, tr('Tap Install on the next screen.'));
+    setTimeout(() => gateRetry(tr("Didn't install? Try again, or keep using this version for now.")), 4000);
   } catch (e) {
-    gateRetry('Download failed. Check your internet and try again.');
+    gateRetry(tr('Download failed. Check your internet and try again.'));
   } finally {
     if (sub && sub.remove) sub.remove();
   }
@@ -1717,14 +2195,14 @@ async function installApk(v) {
 
 // ---------- settings / data ----------
 async function download(name, text, type) {
-  if (demo) { toast('Export works in the phone app'); return; }
+  if (demo) { toast(tr('Export works in the phone app')); return; }
   if (native) { // inside the APK: write to a file, then open Android's share sheet (Drive, Files, WhatsApp...)
     try {
       const { Filesystem, Share } = Capacitor.Plugins;
       skipNextLock();
       const r = await Filesystem.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
-      await Share.share({ title: name, files: [r.uri], dialogTitle: 'Save or send ' + name });
-    } catch (e) { if (!/cancel/i.test(e && e.message)) toast('Could not export: ' + (e && e.message)); }
+      await Share.share({ title: name, files: [r.uri], dialogTitle: tr('Save or send {name}', { name }) });
+    } catch (e) { if (!/cancel/i.test(e && e.message)) toast(tr('Could not export: {err}', { err: e && e.message })); }
     return;
   }
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -1733,7 +2211,7 @@ async function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 function exportCsv() {
-  if (!db.expenses.length) return toast('No data yet');
+  if (!db.expenses.length) return toast(tr('No data yet'));
   const q = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
   const rows = [['Date', 'Heading', 'Amount', 'Mode', 'Category', 'Note', 'Trip or event']]
     .concat([...db.expenses].sort(byNewest).map(e => [e.date, e.title, e.amount, e.mode, e.category, e.note, e.event ? evName(e.event) : '']));
@@ -1746,9 +2224,12 @@ function applyBackup(d) {
   if (!Array.isArray(list)) throw new Error('not a backup');
   if (!db.expenses.length && !db.loans.length && !Array.isArray(d)) {
     const keep = { gdOn: db.settings.gdOn, gdEmail: db.settings.gdEmail, gdFileId: db.settings.gdFileId, gdLast: db.settings.gdLast };
+    const lang = db.settings.lang;
     db = normalizeDb(JSON.parse(JSON.stringify(d)));
     db.onboarded = true;
     Object.assign(db.settings, keep);
+    if (!db.settings.lang && lang) db.settings.lang = lang;
+    if (db.settings.lang && db.settings.lang !== LANG) setTimeout(() => setLang(db.settings.lang), 0); // the backup's language
     return db.expenses.length + db.loans.length;
   }
   const ids = new Set(db.expenses.map(e => e.id)), lids = new Set(db.loans.map(l => l.id));
@@ -1775,8 +2256,8 @@ function restore(file) {
     try {
       const added = applyBackup(JSON.parse(r.result));
       save(); closeSheets(); applyTheme(); render(); syncNotifications();
-      toast(`Restored ${added} item${added === 1 ? '' : 's'}`);
-    } catch (e) { toast('That file is not a Pocket Money backup'); }
+      toast(plural(added, 'Restored 1 item', 'Restored {n} items'));
+    } catch (e) { toast(tr('That file is not a Pocket Money backup')); }
   };
   r.readAsText(file);
 }
@@ -1846,12 +2327,12 @@ async function gdBackup(interactive) {
 }
 async function gdRestore() {
   const f = await gdFind(true);
-  if (!f) { toast('No Pocket Money backup in this Google account yet'); return false; }
+  if (!f) { toast(tr('No Pocket Money backup in this Google account yet')); return false; }
   const j = await (await gdFetch(`/drive/v3/files/${f.id}?alt=media`, {}, true)).json();
   const added = applyBackup(j && j.data ? j.data : j);
   db.settings.gdFileId = f.id;
   save(); closeSheets(); applyTheme(); render(); syncNotifications(); gdRenderRow();
-  toast(`Restored ${added} item${added === 1 ? '' : 's'} from Google Drive`);
+  toast(plural(added, 'Restored 1 item from Google Drive', 'Restored {n} items from Google Drive'));
   return true;
 }
 function gdErrorText(e) {
@@ -1860,24 +2341,24 @@ function gdErrorText(e) {
   if (e && e.code === 'NO_PLUGIN') return 'Update the app to use this';
   return 'Last backup failed. Will retry.';
 }
-function gdShowError(e) {
-  if (e && e.code === 'CANCELLED') return toast('Google sign-in cancelled');
-  if (e && e.code === 'NOT_SET_UP') return dialog({ title: 'Google setup not finished', body: '<p>Google doesn\'t recognise Pocket Money yet. The one-time Google Cloud setup needs to be completed (or its fingerprint doesn\'t match).</p>' });
-  toast(gdErrorText(e));
+function gdShowError(e) { // gdErrorText stays English (it's stored); shown through tr()
+  if (e && e.code === 'CANCELLED') return toast(tr('Google sign-in cancelled'));
+  if (e && e.code === 'NOT_SET_UP') return dialog({ title: tr('Google setup not finished'), body: `<p>${tr("Google doesn't recognise Pocket Money yet. The one-time Google Cloud setup needs to be completed (or its fingerprint doesn't match).")}</p>` });
+  toast(tr(gdErrorText(e)));
 }
 const ago = t => {
   const m = Math.round((Date.now() - t) / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m} min ago`;
+  if (m < 1) return tr('just now');
+  if (m < 60) return tr('{n} min ago', { n: m });
   const d = new Date(t);
-  return ymd(d) === today() ? `today ${d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : shortDate(ymd(d));
+  return ymd(d) === today() ? tr('today {time}', { time: d.toLocaleTimeString(LOC(), { hour: 'numeric', minute: '2-digit' }) }) : shortDate(ymd(d));
 };
 function gdRenderRow() {
   const s = db.settings, el = $('#gdSub');
   if (!el) return;
   $('#gdOn').checked = !!s.gdOn;
   el.classList.toggle('err', !!(s.gdOn && s.gdError));
-  el.textContent = !s.gdOn ? 'Off' : s.gdError ? s.gdError : [s.gdEmail, s.gdLast ? `backed up ${ago(s.gdLast)}` : 'backing up…'].filter(Boolean).join(' · ');
+  el.textContent = !s.gdOn ? tr('Off') : s.gdError ? tr(s.gdError) : [s.gdEmail, s.gdLast ? tr('backed up {when}', { when: ago(s.gdLast) }) : tr('backing up…')].filter(Boolean).join(' · ');
 }
 
 let toastTimer;
@@ -1910,9 +2391,11 @@ const ONB = [
 function showOnb() {
   const s = ONB[onbStep];
   if (!s) return;
-  $('#onbBody').innerHTML = `<div class="onb-art">${s.art()}</div><h1>${s.h}</h1><p>${esc(s.p)}</p>`;
+  // first screen: pick the language right away
+  const langs = onbStep === 1 ? `<div class="chips onb-langs">${LANGS.map(([c, n]) => `<button class="chip ${LANG === c ? 'on' : ''}" data-onblang="${c}">${n}</button>`).join('')}</div>` : '';
+  $('#onbBody').innerHTML = `${langs}<div class="onb-art">${s.art()}</div><h1>${tr(s.h)}</h1><p>${esc(tr(s.p))}</p>`;
   $('#onbDots').innerHTML = [1, 2, 3].map(i => `<i class="${i === onbStep ? 'on' : ''}"></i>`).join('');
-  $('#onbNext').textContent = s.btn;
+  $('#onbNext').textContent = tr(s.btn);
   $('#onbSkip').hidden = !s.skip;
   const signin = onbStep === 1 && !!gdPlugin(); // first screen: optional Continue with Google
   $('#onbSignin').hidden = !signin;
@@ -1922,6 +2405,7 @@ function showOnb() {
 function endOnb() { onbStep = 0; $('#onb').hidden = true; db.onboarded = true; save(); render(); syncNotifications(); }
 $('#onbNext').onclick = () => { if (onbStep < 3) { onbStep++; showOnb(); } else endOnb(); }; // ends on the empty dashboard
 $('#onbSkip').onclick = endOnb;
+$('#onbBody').onclick = e => { const b = e.target.closest('[data-onblang]'); if (b) { setLang(b.dataset.onblang); showOnb(); } };
 
 // ---------- events ----------
 $('#prevMonth').onclick = () => shiftMonth(-1);
@@ -1958,7 +2442,7 @@ document.addEventListener('click', e => {
   else if (d.snadd) addSplitName(d.snadd);
   else if (d.pok) acceptPending(d.pok);
   else if (d.pno) ignorePending(d.pno);
-  else if ('pall' in d) { const n = db.pending.length; [...db.pending].forEach(p => acceptPending(p.id, true)); render(); toast(`Added ${n} spend${n === 1 ? '' : 's'} from SMS`); }
+  else if ('pall' in d) { const n = db.pending.length; [...db.pending].forEach(p => acceptPending(p.id, true)); render(); toast(plural(n, 'Added 1 spend from SMS', 'Added {n} spends from SMS')); }
   else if (d.pedit) { const p = db.pending.find(x => x.id === d.pedit); if (p) openForm(null, false, { ...p, pendingId: p.id }); }
   else if (d.link) linkContact(d.link);
   else if ('close' in d) closeSheets();
@@ -1968,7 +2452,7 @@ document.addEventListener('click', e => {
     if (d.seg === 'fMode') { form.mode = d.val; renderPickers(); }
     else if (d.seg === 'lType') { lf.type = d.val; renderLoanForm(); }
     else if (d.seg === 'lMode') { lf.mode = d.val; renderLoanForm(); }
-    else if (d.seg === 'pMode') { payMode = d.val; $('#pMode').innerHTML = segHTML('pMode', modeOptions, payMode); }
+    else if (d.seg === 'pMode') { payMode = d.val; $('#pMode').innerHTML = segHTML('pMode', modeOptions(),payMode); }
   }
   else if (d.cat) { form.category = d.cat; renderPickers(); }
   else if (d.hmode) { histMode = d.hmode; renderHistory(); }
@@ -1985,7 +2469,7 @@ document.addEventListener('click', e => {
   else if (d.addfor) openLoanForm(null, false, d.addfor);
   else if ('budget' in d) openSetting('budget');
   else if (d.set) openSetting(d.set);
-  else if (d.info) dialog({ title: INFO[d.info][0], body: INFO[d.info][1] });
+  else if (d.info) showInfo(d.info);
   else if (d.split) { form.split = Math.min(20, Math.max(2, form.names.length + 1, (form.split || 2) + Number(d.split))); renderSplit(); }
 });
 
@@ -1998,8 +2482,42 @@ document.addEventListener('keydown', e => {
 
 const THEMES = [['system', 'System default'], ['light', 'Light'], ['dark', 'Dark']];
 function settingValues() {
-  $('#valTheme').textContent = (THEMES.find(t => t[0] === (db.settings.theme || 'system')) || THEMES[0])[1];
-  $('#valBudget').textContent = db.budget > 0 ? money(db.budget) : 'Off';
+  $('#valTheme').textContent = tr((THEMES.find(t => t[0] === (db.settings.theme || 'system')) || THEMES[0])[1]);
+  $('#valBudget').textContent = db.budget > 0 ? money(db.budget) : tr('Off');
+  $('#valLang').textContent = (LANGS.find(l => l[0] === LANG) || LANGS[0])[1];
+}
+// Switch the whole app to another language (Settings → Language, or the first intro screen)
+function setLang(code) {
+  if (!LANGS.some(l => l[0] === code)) return;
+  LANG = db.settings.lang = code;
+  save();
+  document.documentElement.lang = code;
+  translateStatic(); render(); settingValues(); renderAccount();
+  $('#lockMsg').textContent = tr('Locked');
+  syncNotifications(); registerNotifButtons().catch(() => {});
+}
+// Static HTML (labels, buttons, placeholders) is written in English; swap in the chosen language.
+// The English original is remembered per node, so switching back and forth works. Parts the app
+// re-renders itself (lists, your data, pop-ups) are skipped.
+const STATIC_SKIP = '#tab-home,#tab-udhaar,#histList,#histModes,#histEvents,#monthLabel,#onbBody,#dlg,#ask,#toast,#menuTitle,#menuMeta,#menuNote,#lmTitle,#lmMeta,#lmHistory,#lmActions,#lPeople,#splitNames,#splitOwe,#fEvent,#fCat,#fMode,#lType,#lMode,#lRemind,#pMode,#acctName,#acctEmail,#gdSub,#valTheme,#valBudget,#valLang,#gateTitle,#gateNotes,#gatePct,#gateGo,#sheetTitle,#loanTitle,#evTitle,#payTitle,#payLeft,#payFull,#splitN,#splitShare,#resultView,#onbNext,#privacyNote,script,style,.wordmark';
+const staticText = new WeakMap();
+function translateStatic(root = document.body) {
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n =>
+    n.parentElement && !n.parentElement.closest(STATIC_SKIP) && n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  for (let n; (n = walk.nextNode());) {
+    if (!staticText.has(n)) staticText.set(n, n.nodeValue);
+    const orig = staticText.get(n), key = orig.trim();
+    n.nodeValue = orig.replace(key, tr(key));
+  }
+  root.querySelectorAll('[placeholder],[aria-label]').forEach(el => {
+    if (el.closest(STATIC_SKIP)) return;
+    for (const a of ['placeholder', 'aria-label']) {
+      if (!el.hasAttribute(a)) continue;
+      const k = 'o' + a.replace('-', '');
+      if (!(k in el.dataset)) el.dataset[k] = el.getAttribute(a);
+      el.setAttribute(a, tr(el.dataset[k]));
+    }
+  });
 }
 $('#btnSettings').onclick = () => {
   settingValues();
@@ -2013,7 +2531,7 @@ $('#btnSettings').onclick = () => {
 };
 
 // Small pop-up: dialog({ title, body (html), actions: [{ label, kind, fn }] }); fn returning false keeps it open
-function dialog({ title, body = '', actions = [{ label: 'OK' }] }) {
+function dialog({ title, body = '', actions = [{ label: tr('OK') }] }) {
   $('#dlgTitle').textContent = title;
   $('#dlgBody').innerHTML = body;
   $('#dlgActions').innerHTML = actions.map((a, i) => `<button class="btn ${a.kind || 'primary'}" data-dlg="${i}">${a.label}</button>`).join('');
@@ -2041,12 +2559,22 @@ const INFO = {
   lock: ['App lock', '<p>Pocket Money asks for your <b>fingerprint, face or phone PIN</b> when you open it, and again if you come back after more than 30 seconds away.</p><p>Android does the check. The app never sees your fingerprint or PIN.</p>'],
   gdrive: ['Google Drive backup', '<p>A copy of your data is saved in a <b>hidden Pocket Money folder in your own Google Drive</b>, a few seconds after every change.</p><p>Pocket Money can only see that folder: not your files, Gmail or contacts.</p><p>New phone or reinstalled the app? Choose <b>Restore from Google Drive</b>.</p>'],
 };
+const showInfo = k => dialog({ title: tr(INFO[k][0]), body: tr(INFO[k][1]) });
 function openSetting(which) {
-  if (which === 'theme') {
+  if (which === 'lang') {
+    const close = dialog({
+      title: tr('Language'), actions: [],
+      body: LANGS.map(([v, l]) => `<button class="opt" data-lang-opt="${v}">${l}${v === LANG ? icon('check') : ''}</button>`).join(''),
+    });
+    $('#dlgBody').onclick = e => {
+      const b = e.target.closest('[data-lang-opt]'); if (!b) return;
+      close(); setLang(b.dataset.langOpt);
+    };
+  } else if (which === 'theme') {
     const cur = db.settings.theme || 'system';
     const close = dialog({
-      title: 'Theme', actions: [],
-      body: THEMES.map(([v, l]) => `<button class="opt" data-theme-opt="${v}">${l}${v === cur ? icon('check') : ''}</button>`).join(''),
+      title: tr('Theme'), actions: [],
+      body: THEMES.map(([v, l]) => `<button class="opt" data-theme-opt="${v}">${tr(l)}${v === cur ? icon('check') : ''}</button>`).join(''),
     });
     $('#dlgBody').onclick = e => {
       const b = e.target.closest('[data-theme-opt]'); if (!b) return;
@@ -2054,92 +2582,94 @@ function openSetting(which) {
     };
   } else if (which === 'budget') {
     dialog({
-      title: 'Monthly budget',
-      body: '<input id="budget" class="txt" type="number" inputmode="decimal" min="0" placeholder="e.g. 20000"><p style="margin:8px 0 0">Leave empty or 0 to turn it off.</p>',
-      actions: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Save', fn: () => {
+      title: tr('Monthly budget'),
+      body: `<input id="budget" class="txt" type="number" inputmode="decimal" min="0" placeholder="${tr('e.g. 20000')}"><p style="margin:8px 0 0">${tr('Leave empty or 0 to turn it off.')}</p>`,
+      actions: [{ label: tr('Cancel'), kind: 'ghost' }, { label: tr('Save'), fn: () => {
         db.budget = Math.max(0, round2(Number($('#budget').value) || 0));
         save(); render(); settingValues();
-        toast(db.budget ? `Budget set to ${money(db.budget)}` : 'Budget turned off');
+        toast(db.budget ? tr('Budget set to {amt}', { amt: money(db.budget) }) : tr('Budget turned off'));
       } }],
     });
     $('#budget').value = db.budget || '';
     setTimeout(() => $('#budget').focus(), 100);
   } else if (which === 'wa') {
     dialog({
-      title: 'WhatsApp reminder text',
-      body: '<textarea id="waText" class="txt" rows="3" maxlength="300" style="resize:none"></textarea><p style="margin:8px 0 0">{name}, {amount} and {date} are filled in for you.</p>',
-      actions: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Save', fn: () => {
-        db.settings.waText = $('#waText').value.trim() || WA_DEFAULT; save(); syncNotifications(); toast('Message saved');
+      title: tr('WhatsApp reminder text'),
+      body: `<textarea id="waText" class="txt" rows="3" maxlength="300" style="resize:none"></textarea><p style="margin:8px 0 0">${tr('{name}, {amount} and {date} are filled in for you.').replace(/\{(\w+)\}/g, '{$1}')}</p>`,
+      actions: [{ label: tr('Cancel'), kind: 'ghost' }, { label: tr('Save'), fn: () => {
+        const v = $('#waText').value.trim();
+        db.settings.waText = !v || v === tr(WA_DEFAULT) ? WA_DEFAULT : v; // the default keeps following the language
+        save(); syncNotifications(); toast(tr('Message saved'));
       } }],
     });
-    $('#waText').value = db.settings.waText || WA_DEFAULT;
+    $('#waText').value = waTemplate();
   }
 }
 $('#smsOn').onchange = async e => {
   const P = smsPlugin();
-  if (!e.target.checked) { db.settings.sms = false; save(); if (P) P.setAutoDetect({ enabled: false }).catch(() => {}); toast('SMS auto-detect off'); return; }
-  if (!native) { e.target.checked = false; toast('Works in the phone app: it reads your bank SMS there'); return; }
-  if (!P) { e.target.checked = false; toast('Update the app to use SMS auto-detect'); return; }
+  if (!e.target.checked) { db.settings.sms = false; save(); if (P) P.setAutoDetect({ enabled: false }).catch(() => {}); toast(tr('SMS auto-detect off')); return; }
+  if (!native) { e.target.checked = false; toast(tr('Works in the phone app: it reads your bank SMS there')); return; }
+  if (!P) { e.target.checked = false; toast(tr('Update the app to use SMS auto-detect')); return; }
   db.settings.sms = true; db.smsSince = 0; save(); // first scan covers the last 30 days
   await scanSms(); // asks Android for the SMS permission
   e.target.checked = db.settings.sms; // turned back off if permission was denied
   P.setAutoDetect({ enabled: db.settings.sms }).catch(() => {});
   if (db.settings.sms) notifAllowed().catch(() => {}); // the instant "₹250 spent" alerts need notifications
-  if (db.settings.sms && !db.pending.length) toast('Auto-detect on. Your next UPI payment will pop up within seconds.');
+  if (db.settings.sms && !db.pending.length) toast(tr('Auto-detect on. Your next UPI payment will pop up within seconds.'));
 };
 $('#nudge').onchange = e => {
   db.settings.nudge = e.target.checked; save(); syncNotifications();
-  toast(db.settings.nudge ? (native ? 'Daily nudge on: 9 PM' : 'Daily nudge on (works in the phone app)') : 'Daily nudge off');
+  toast(tr(db.settings.nudge ? (native ? 'Daily nudge on: 9 PM' : 'Daily nudge on (works in the phone app)') : 'Daily nudge off'));
 };
 $('#btnIntro').onclick = () => { closeSheets(); onbStep = 1; showOnb(); };
 $('#btnCsv').onclick = exportCsv;
 $('#btnBackup').onclick = () => download(`pocket-money-backup-${today()}.json`, JSON.stringify(db, null, 1), 'application/json');
 $('#btnRestore').onclick = () => { skipNextLock(); $('#fileRestore').click(); };
 $('#gdOn').onchange = async e => {
-  if (!e.target.checked) { db.settings.gdOn = false; saveLocal(); gdRenderRow(); toast('Google Drive backup off'); return; }
-  if (!gdPlugin()) { e.target.checked = false; toast(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app'); return; }
+  if (!e.target.checked) { db.settings.gdOn = false; saveLocal(); gdRenderRow(); toast(tr('Google Drive backup off')); return; }
+  if (!gdPlugin()) { e.target.checked = false; toast(tr(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app')); return; }
   try {
     await gdAuth(true); // Google's own sign-in screen, app folder only
     db.settings.gdOn = true; saveLocal(); gdRenderRow();
     const existing = await gdFind(false);
-    if (existing && !db.settings.gdFileId && await ask('This Google account already has a Pocket Money backup. Add its entries to this phone first?', 'Add them', 'primary')) {
+    if (existing && !db.settings.gdFileId && await ask(tr('This Google account already has a Pocket Money backup. Add its entries to this phone first?'), tr('Add them'), 'primary')) {
       await gdRestore();
     }
     await gdBackup(false);
-    toast(`Backed up to ${db.settings.gdEmail || 'Google Drive'}`);
+    toast(tr('Backed up to {where}', { where: db.settings.gdEmail || 'Google Drive' }));
   } catch (err) {
     e.target.checked = false; db.settings.gdOn = false; saveLocal(); gdRenderRow(); gdShowError(err);
   }
 };
 $('#btnGdRestore').onclick = async () => {
-  if (!gdPlugin()) return toast(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app');
-  if (!(await ask('Bring back your Google Drive backup? Entries already on this phone stay; missing ones are added.', 'Restore', 'primary'))) return;
+  if (!gdPlugin()) return toast(tr(native ? 'Update the app to use Google Drive backup' : 'Works in the phone app'));
+  if (!(await ask(tr('Bring back your Google Drive backup? Entries already on this phone stay; missing ones are added.'), tr('Restore'), 'primary'))) return;
   try { await gdRestore(); } catch (err) { gdShowError(err); }
 };
 // Sign in with Google (optional). Restores this account's Drive backup if there is one,
 // then keeps backing up. Used by the first screen and by Settings → Account.
 async function signInGoogle({ fromIntro } = {}) {
-  if (!gdPlugin()) return toast(native ? 'Update the app to sign in with Google' : 'Works in the phone app');
+  if (!gdPlugin()) return toast(tr(native ? 'Update the app to sign in with Google' : 'Works in the phone app'));
   try {
     await gdAuth(true, true); // Google's own account picker; asks for name + photo too
     db.settings.gdOn = true; saveLocal();
     const existing = await gdFind(false);
     if (existing && (fromIntro || (!db.expenses.length && !db.loans.length))) await gdRestore();
-    else if (existing && !db.settings.gdFileId && await ask('This Google account already has a Pocket Money backup. Add its entries to this phone first?', 'Add them', 'primary')) await gdRestore();
+    else if (existing && !db.settings.gdFileId && await ask(tr('This Google account already has a Pocket Money backup. Add its entries to this phone first?'), tr('Add them'), 'primary')) await gdRestore();
     if (fromIntro) { onbStep = 0; $('#onb').hidden = true; db.onboarded = true; }
     await gdBackup(false);
     save(); render(); renderAccount(); syncNotifications();
-    toast(`Signed in as ${db.settings.gdName || db.settings.gdEmail || 'your Google account'}. Backups are on.`);
+    toast(tr('Signed in as {name}. Backups are on.', { name: db.settings.gdName || db.settings.gdEmail || tr('your Google account') }));
   } catch (err) {
     if (!db.settings.gdFileId) db.settings.gdOn = false;
     saveLocal(); renderAccount(); gdShowError(err);
   }
 }
 async function signOutGoogle() {
-  if (!(await ask('Sign out of Google? Your data stays on this phone; Drive backups stop until you sign in again.', 'Sign out', 'primary'))) return;
+  if (!(await ask(tr('Sign out of Google? Your data stays on this phone; Drive backups stop until you sign in again.'), tr('Sign out'), 'primary'))) return;
   Object.assign(db.settings, { gdOn: false, gdEmail: '', gdName: '', gdPhoto: '', gdFileId: '', gdLast: 0, gdError: '' });
   gdToken = null; saveLocal(); renderAccount();
-  toast('Signed out. Your data is still on this phone.');
+  toast(tr('Signed out. Your data is still on this phone.'));
 }
 // Settings → Account: name, email and Google photo when signed in, else "Sign in with Google"
 function renderAccount() {
@@ -2148,8 +2678,8 @@ function renderAccount() {
   $('#acctIn').hidden = !signed;
   $('#acctOut').hidden = signed;
   if (signed) {
-    $('#acctName').textContent = s.gdName || (s.gdEmail ? s.gdEmail.split('@')[0] : 'Google account');
-    $('#acctEmail').textContent = s.gdEmail || 'Backing up to your Google Drive';
+    $('#acctName').textContent = s.gdName || (s.gdEmail ? s.gdEmail.split('@')[0] : tr('Google account'));
+    $('#acctEmail').textContent = s.gdEmail || tr('Backing up to your Google Drive');
     const pic = $('#acctPic'), photo = /^https:\/\/[\w.-]+\.(googleusercontent|google)\.com\//.test(s.gdPhoto || '') ? s.gdPhoto : '';
     pic.style.backgroundImage = photo ? `url("${encodeURI(photo)}")` : '';
     pic.textContent = photo ? '' : (s.gdName || s.gdEmail || 'G')[0].toUpperCase();
@@ -2157,7 +2687,7 @@ function renderAccount() {
   }
   // With Google Drive backup, the manual backup-file rows aren't needed; they come back if you sign out.
   $('#btnBackup').hidden = $('#btnRestore').hidden = signed;
-  $('#privacyNote').innerHTML = icon('shield') + (signed && s.gdOn ? 'Backed up to your own Google Drive' : 'Your data stays on this phone');
+  $('#privacyNote').innerHTML = icon('shield') + tr(signed && s.gdOn ? 'Backed up to your own Google Drive' : 'Your data stays on this phone');
   gdRenderRow();
 }
 $('#btnSignIn').onclick = () => signInGoogle();
@@ -2176,9 +2706,9 @@ async function unlock() {
   if (unlocking) return;
   unlocking = true; skipNextLock();
   try {
-    await P.authenticate({ title: 'Unlock Pocket Money', subtitle: 'Use your fingerprint, face or phone PIN' });
-    $('#lock').hidden = true; $('#lockMsg').textContent = 'Locked';
-  } catch (e) { $('#lockMsg').textContent = 'Tap Unlock to try again'; }
+    await P.authenticate({ title: tr('Unlock Pocket Money'), subtitle: tr('Use your fingerprint, face or phone PIN') });
+    $('#lock').hidden = true; $('#lockMsg').textContent = tr('Locked');
+  } catch (e) { $('#lockMsg').textContent = tr('Tap Unlock to try again'); }
   finally { unlocking = false; }
 }
 function lockNow() {
@@ -2199,27 +2729,27 @@ document.addEventListener('visibilitychange', () => {
 });
 $('#lockOn').onchange = async e => {
   const P = lockPlugin(), want = e.target.checked;
-  if (!P) { e.target.checked = false; return toast(native ? 'Update the app to use app lock' : 'Works in the phone app'); }
+  if (!P) { e.target.checked = false; return toast(tr(native ? 'Update the app to use app lock' : 'Works in the phone app')); }
   if (want) {
     const a = await P.available().catch(() => ({ available: false }));
     if (!a.available) {
       e.target.checked = false;
-      return dialog({ title: 'Set up a screen lock first', body: '<p>App lock uses your phone\'s fingerprint, face or PIN. Add one in phone <b>Settings → Security</b>, then try again.</p>' });
+      return dialog({ title: tr('Set up a screen lock first'), body: `<p>${tr("App lock uses your phone's fingerprint, face or PIN. Add one in phone <b>Settings → Security</b>, then try again.")}</p>` });
     }
   }
   skipNextLock();
   try {
-    await P.authenticate({ title: want ? 'Turn on app lock' : 'Turn off app lock', subtitle: 'Confirm it\'s you' });
+    await P.authenticate({ title: tr(want ? 'Turn on app lock' : 'Turn off app lock'), subtitle: tr("Confirm it's you") });
     db.settings.lock = want; saveLocal();
-    toast(want ? 'App lock on. Pocket Money will ask for your fingerprint or PIN.' : 'App lock off');
+    toast(tr(want ? 'App lock on. Pocket Money will ask for your fingerprint or PIN.' : 'App lock off'));
   } catch (err) { e.target.checked = !want; }
 };
 $('#onbNoAccount').onclick = () => { onbStep = 2; showOnb(); };
 $('#fileRestore').onchange = e => { if (e.target.files[0]) restore(e.target.files[0]); e.target.value = ''; };
 $('#btnWipe').onclick = async () => {
-  if (!db.expenses.length && !db.loans.length) return toast('Nothing to delete');
-  if (!(await ask(`Delete all ${db.expenses.length} expenses and ${db.loans.length} udhaar entries? Download a backup first if unsure.`, 'Delete all'))) return;
-  db.expenses = []; db.loans = []; db.events = []; histEvent = null; save(); closeSheets(); render(); syncNotifications(); toast('All data deleted');
+  if (!db.expenses.length && !db.loans.length) return toast(tr('Nothing to delete'));
+  if (!(await ask(tr('Delete all {e} expenses and {u} udhaar entries? Download a backup first if unsure.', { e: db.expenses.length, u: db.loans.length }), tr('Delete all')))) return;
+  db.expenses = []; db.loans = []; db.events = []; histEvent = null; save(); closeSheets(); render(); syncNotifications(); toast(tr('All data deleted'));
 };
 
 // Theme, like WhatsApp: System default follows the phone; Light / Dark override it.
@@ -2248,6 +2778,8 @@ new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, att
 
 $('#demoBar').hidden = !demo;
 document.querySelectorAll('[data-ic]').forEach(el => { el.innerHTML = icon(el.dataset.ic); }); // static Lucide icons
+document.documentElement.lang = LANG;
+if (LANG !== 'en') translateStatic();
 render();
 
 // Phone app: tell the loader (android/loader.html) this version started fine, and
@@ -2264,7 +2796,7 @@ window.kharchaUpdateReady = () => {
 };
 // After an update: one friendly line saying what's new
 if (thisVersion && db.seenVersion && db.seenVersion !== thisVersion) {
-  setTimeout(() => toast(`Updated to v${thisVersion} 🎉 ${metaOf(document.documentElement.outerHTML, 'pm-notes')}`), 2300);
+  setTimeout(() => toast(tr('Updated to v{v} 🎉', { v: thisVersion }) + ' ' + tr(metaOf(document.documentElement.outerHTML, 'pm-notes'))), 2300);
 }
 if (thisVersion && db.seenVersion !== thisVersion) { db.seenVersion = thisVersion; save(); }
 
@@ -2297,7 +2829,7 @@ splash(() => {
   if (/[?&]open=loan/.test(location.search)) openLoanForm(null);
   if (/[?&]open=newevent/.test(location.search)) openEventForm(null);
   if (/[?&]open=trip/.test(location.search) && db.events[0]) { tab = 'history'; histEvent = db.events[0].id; render(); }
-  if (/[?&]open=info/.test(location.search)) { $('#btnSettings').click(); dialog({ title: INFO.sms[0], body: INFO.sms[1] }); }
+  if (/[?&]open=info/.test(location.search)) { $('#btnSettings').click(); showInfo('sms'); }
   if (/[?&]skipintro=1/.test(location.search)) db.onboarded = true; // for screenshots
   if (!db.onboarded) { onbStep = 1; showOnb(); }
   else syncNotifications();

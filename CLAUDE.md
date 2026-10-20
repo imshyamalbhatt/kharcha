@@ -14,6 +14,8 @@ Trips & events (2.7): `db.events` = `{ id, name, start, end, budget, createdAt }
 
 Dashboard is deliberately minimal (testers said it showed too much): Today card, Budget card (always shown, with days left and a safe per-day amount, or a "Set a monthly budget" button), due Udhaar reminders, Where it went (top 4 categories), Recent (4). The Cash/Card/UPI split lives on the History filter chips. Don't add blocks back to the dashboard without asking.
 
+Languages (2.8): English, हिन्दी, ગુજરાતી, मराठी. Settings → Language (also chips on the first intro screen); until chosen, the phone's language if it's one of these, else English. **All app text goes through `tr('English text', vars)`** (or `plural(n, one, many, vars)`); the English text is the key into `TR_ROWS` (the first `<script>`, one row per text: English, Hindi, Gujarati, Marathi, `{placeholders}` kept exactly). Witty lines: `LINES_TR`. Static HTML text, placeholders and aria-labels are translated by `translateStatic()` (it skips the parts the JS renders itself, `STATIC_SKIP`). Stored data stays English (categories, modes, app-written notes like "From SMS" / "Split 4 ways…", shown via `noteText()`). Dates use `LOC()` (`hi-IN-u-nu-latn` etc.: local month names, digits stay 0-9); money stays `en-IN`. The default WhatsApp reminder follows the language; a text the user wrote is sent as written. Udhaar is उधार (hi), ઉધાર (gu), उधारी (mr). **When adding or changing English text, add/update its row in `TR_ROWS`**; the test bench (`lang-test.js` + `keys.js`) lists missing ones.
+
 ## How it ships
 
 - The whole app is `index.html` (inline CSS + JS, no build step, no framework). Assets live in `assets/` (logo, Baloo 2 fonts). Data is in `localStorage` under `kharcha.v1` on the phone only.
@@ -47,5 +49,5 @@ Dashboard is deliberately minimal (testers said it showed too much): Today card,
 ## Test before pushing
 
 - `node tools/serve.js`, then open http://localhost:5173/tools/phone.html: the app in a phone frame with sample data, plus Restart app / Fresh install (onboarding) / dark mode buttons.
-- Test-only URL switches: `?demo=1` (sample data, includes a running "Goa trip"), `?fresh=1` (new install, onboarding), `?tab=home|history|udhaar`, `?open=add|settings|loan|newevent|trip`.
+- Test-only URL switches: `?demo=1` (sample data, includes a running "Goa trip"), `?fresh=1` (new install, onboarding), `?tab=home|history|udhaar`, `?open=add|settings|loan|newevent|trip`, `?lang=hi|gu|mr|en`.
 - Shyamal checks the laptop preview first; push to `main` only after he approves.
